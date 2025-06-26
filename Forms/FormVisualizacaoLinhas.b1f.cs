@@ -32,6 +32,7 @@ namespace ItTech.Tool.AddonNFS.Forms
         // Estado
         private bool _dadosCarregados = false;
         private readonly object _lockCarregamento = new object();
+        private CancellationTokenSource _cancellationTokenSource;
         private bool _carregandoDados = false;
         private int _totalLinhasSelecionadas = 0;
         private decimal _valorTotalSelecionado = 0;
@@ -64,6 +65,7 @@ namespace ItTech.Tool.AddonNFS.Forms
         private System.Timers.Timer _timerUI;
         private Queue<Action> _filaAcoesUI = new Queue<Action>();
         private readonly object _lockFila = new object();
+        private bool _formFechando = false;
 
         // Constantes para otimização
         private const int BATCH_SIZE = 100;
@@ -97,6 +99,10 @@ namespace ItTech.Tool.AddonNFS.Forms
                 _grupoCode = code;
                 _dadosCarregados = false;
 
+                // Cancelar operações anteriores se existirem
+                _cancellationTokenSource?.Cancel();
+                _cancellationTokenSource = new CancellationTokenSource();
+
                 if (!string.IsNullOrEmpty(_grupoCode))
                 {
                     // Iniciar timer para processar ações UI
@@ -105,6 +111,7 @@ namespace ItTech.Tool.AddonNFS.Forms
                     // Thread para carregamento em segundo plano
                     Thread threadCarregamento = new Thread(() =>
                     {
+                        var token = _cancellationTokenSource.Token;
                         try
                         {
                             // Mostrar progresso
@@ -116,7 +123,10 @@ namespace ItTech.Tool.AddonNFS.Forms
                                     false);
                             });
 
-                            CarregarDadosAsync();
+                            // Verificar cancelamento
+                            if (token.IsCancellationRequested) return;
+
+                            CarregarDadosAsync(token);
                             _dadosCarregados = true;
 
                             // Finalizar
@@ -135,9 +145,20 @@ namespace ItTech.Tool.AddonNFS.Forms
                         {
                             EnfileirarAcaoUI(() =>
                             {
-                               // Application.SBO_Application.MessageBox($"Erro: {ex.Message}", 1, "Ok", "", "");
+                                if (!_formFechando && !token.IsCancellationRequested)
+                                {
+                                    Application.SBO_Application.SetStatusBarMessage(
+                                        $"Erro ao carregar dados: {ex.Message}",
+                                        BoMessageTime.bmt_Short,
+                                        true);
+                                }
                                 PararTimerUI();
                             });
+                        }
+                        finally
+                        {
+                            // Garantir que ProgressBar seja fechada
+                            ProgressBarHelper.Instance.Fechar();
                         }
                     });
 
@@ -165,6 +186,12 @@ namespace ItTech.Tool.AddonNFS.Forms
                 _timerUI.Stop();
                 _timerUI.Dispose();
                 _timerUI = null;
+                
+                // Limpar fila restante
+                lock (_lockFila)
+                {
+                    _filaAcoesUI.Clear();
+                }
             }
         }
 
@@ -195,7 +222,10 @@ namespace ItTech.Tool.AddonNFS.Forms
             {
                 try
                 {
-                    acao.Invoke();
+                    if (!_formFechando)
+                    {
+                        acao.Invoke();
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -207,7 +237,7 @@ namespace ItTech.Tool.AddonNFS.Forms
             }
         }
 
-        private void CarregarDadosAsync()
+        private void CarregarDadosAsync(CancellationToken cancellationToken)
         {
             try
             {
@@ -218,6 +248,13 @@ namespace ItTech.Tool.AddonNFS.Forms
 
                 // Usar ProgressBarHelper
                 ProgressBarHelper.Instance.Criar("Carregando dados do grupo...", 100);
+
+                // Verificar cancelamento
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    ProgressBarHelper.Instance.Fechar();
+                    return;
+                }
 
                 // Fase 1: Carregar grupo
                 ProgressBarHelper.Instance.Atualizar(20, "Obtendo dados do grupo...");
@@ -249,12 +286,15 @@ namespace ItTech.Tool.AddonNFS.Forms
                     }
                 });
 
+                // Verificar cancelamento
+                if (cancellationToken.IsCancellationRequested) return;
+
                 // Fase 3: Verificar se precisa importar ou já tem dados
                 ProgressBarHelper.Instance.Atualizar(60, "Verificando dados...");
 
                 if (_grupo.Linhas == null || _grupo.Linhas.Count == 0)
                 {
-                    ImportarDadosAsync();
+                    ImportarDadosAsync(cancellationToken);
                 }
                 else
                 {
@@ -290,13 +330,11 @@ namespace ItTech.Tool.AddonNFS.Forms
             finally
             {
                 _carregandoDados = false;
-                // Fechar progress bar após pequeno delay para mostrar 100%
-                Thread.Sleep(300);
                 ProgressBarHelper.Instance.Fechar();
             }
         }
 
-        private void ImportarDadosAsync()
+        private void ImportarDadosAsync(CancellationToken cancellationToken)
         {
             try
             {
@@ -310,11 +348,9 @@ namespace ItTech.Tool.AddonNFS.Forms
                    int progresso = 65 + Math.Min(10, (processadas * 10 / Math.Max(processadas, 100)));
                    ProgressBarHelper.Instance.Atualizar(progresso, msg);
 
-                   // OTIMIZADO: Dar chance para UI processar a cada 100 linhas
-                   if (processadas % 100 == 0)
-                   {
-                       Thread.Sleep(10);
-                   }
+                   // Verificar cancelamento
+                   if (cancellationToken.IsCancellationRequested)
+                       throw new OperationCanceledException();
                }
                  );
 
@@ -322,6 +358,9 @@ namespace ItTech.Tool.AddonNFS.Forms
                 {
                     throw new Exception(string.Join("\n", resultado.validacao.Erros.Take(5)));
                 }
+
+                // Verificar cancelamento
+                if (cancellationToken.IsCancellationRequested) return;
 
                 // Atualizar progresso
                 ProgressBarHelper.Instance.Atualizar(75, $"Salvando {resultado.linhas.Count} linhas no banco...");
@@ -337,9 +376,6 @@ namespace ItTech.Tool.AddonNFS.Forms
 
                 ProgressBarHelper.Instance.Atualizar(85, "Recarregando dados...");
 
-                // OTIMIZADO: Pequeno delay antes de operação pesada
-                Thread.Sleep(50);
-
                 // Recarregar as linhas do banco para obter os Codes corretos
                 _linhas = _grupoController.ObterLinhasGrupo(_grupoCode);
 
@@ -353,22 +389,13 @@ namespace ItTech.Tool.AddonNFS.Forms
 
                 ProgressBarHelper.Instance.Atualizar(95, "Finalizando...");
 
-                // OTIMIZADO: Delay antes de atualizar UI
-                Thread.Sleep(100);
-
                 // Carregar na Matrix via UI thread
                 EnfileirarAcaoUI(() =>
                 {
                     try
                     {
-                        // OTIMIZADO: Dividir o freeze em operações menores
                         UIAPIRawForm.Freeze(true);
                         CarregarLinhasNaMatrixOtimizado();
-                        UIAPIRawForm.Freeze(false);
-
-                        Thread.Sleep(50); // Dar respiro
-
-                        UIAPIRawForm.Freeze(true);
                         AtualizarContadores();
                         AtualizarInterface();
                         MostrarProgressoCarregamento(false);
@@ -648,12 +675,6 @@ namespace ItTech.Tool.AddonNFS.Forms
                     dt.Rows.Add();
                     PreencherLinhaDataTable(dt, j, linha);
                 }
-
-                // OTIMIZADO: Pequeno delay a cada mini-lote
-                if (i + miniLoteSize < _linhas.Count)
-                {
-                    Thread.Sleep(5);
-                }
             }
         }
 
@@ -714,6 +735,10 @@ namespace ItTech.Tool.AddonNFS.Forms
 
             try
             {
+                // Se já está no estado desejado, não fazer nada
+                if (_estadoCheckboxSelAll == this.CheckBox0.Checked)
+                    return;
+
                 var marcarTodos = this.CheckBox0.Checked;
                 UIAPIRawForm.Freeze(true);
 
@@ -1478,21 +1503,43 @@ namespace ItTech.Tool.AddonNFS.Forms
         private void Form_CloseBefore(SBOItemEventArg pVal, out bool BubbleEvent)
         {
             BubbleEvent = true;
+            _formFechando = true;
 
             try
             {
-                // Parar timer se estiver rodando
+                // Cancelar operações em andamento
+                _cancellationTokenSource?.Cancel();
+
+                // Parar timer UI
                 PararTimerUI();
 
-                // Limpar fila
-                lock (_lockFila)
+                // Limpar DataTable
+                if (DataTableExists("dtLinhas"))
                 {
-                    _filaAcoesUI.Clear();
+                    var dt = UIAPIRawForm.DataSources.DataTables.Item("dtLinhas");
+                    dt.Rows.Clear();
                 }
 
-                // Limpar caches
+                // Limpar coleções
                 _linhasIndexadas?.Clear();
                 _linhasSelecionadasIndex?.Clear();
+                _linhas?.Clear();
+
+                // Fechar ProgressBar se estiver aberta
+                ProgressBarHelper.Instance.Fechar();
+
+                // Remover do FormManager
+                FormManager.RemoverFormulario(UIAPIRawForm.UniqueID);
+
+                // Dispose do CancellationTokenSource
+                _cancellationTokenSource?.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Application.SBO_Application.SetStatusBarMessage($"Erro ao fechar: {ex.Message}",
+                    BoMessageTime.bmt_Short, true);
+            }
+        }
 
                 FormManager.RemoverFormulario(UIAPIRawForm.UniqueID);
             }
