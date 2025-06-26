@@ -38,13 +38,17 @@ namespace ItTech.Tool.AddonNFS.Forms
         // Estatísticas
         private int _totalSelecionadas = 0;
         private decimal _valorTotalSelecionado = 0;
+        
+        // Cache para otimização
+        private Dictionary<string, StatusLinha> _ultimoStatusCache = new Dictionary<string, StatusLinha>();
+        private bool _zebraStripeAplicado = false;
 
-        // Cores de status
+        // Cores de status - SUPER SIMPLES E CLARAS
         private readonly Dictionary<StatusLinha, int> CORES_STATUS = new Dictionary<StatusLinha, int>
         {
-            { StatusLinha.Sucesso, 11854805 },   // Verde
-            { StatusLinha.Erro, 16750899 },      // Vermelho
-            { StatusLinha.Pendente, 16771583 }   // Amarelo
+            { StatusLinha.Sucesso, 13172680 },   // Verde bem claro (200,255,200)
+            { StatusLinha.Erro, 13158655 },      // Rosa bem claro (255,200,200)
+            { StatusLinha.Pendente, 16763080 }   // Azul bem claro (200,200,255)
         };
 
         #endregion
@@ -262,6 +266,10 @@ namespace ItTech.Tool.AddonNFS.Forms
         {
             try
             {
+                // Mostrar indicador de carregamento
+                Application.SBO_Application.StatusBar.SetText("Carregando dados... Por favor aguarde.", 
+                    BoMessageTime.bmt_Short, BoStatusBarMessageType.smt_Warning);
+                
                 var dt = GetDataTable();
                 if (dt == null) return;
 
@@ -270,33 +278,66 @@ namespace ItTech.Tool.AddonNFS.Forms
                 if (_grupo.Linhas == null || _grupo.Linhas.Count == 0)
                 {
                     oGrid.Clear();
+                    Application.SBO_Application.StatusBar.SetText("Nenhum dado para exibir.", 
+                        BoMessageTime.bmt_Short, BoStatusBarMessageType.smt_Success);
                     return;
                 }
 
                 var linhasOrdenadas = OrdenarLinhas(_grupo.Linhas);
-
-                foreach (var linha in linhasOrdenadas)
+                
+                // Adicionar todas as linhas de uma vez para melhor performance
+                int totalLinhas = linhasOrdenadas.Count;
+                bool mostrarProgresso = totalLinhas > 100;
+                
+                if (mostrarProgresso)
                 {
-                    AdicionarLinhaDataTable(dt, linha);
+                    Application.SBO_Application.StatusBar.SetText($"Preparando {totalLinhas} registros...", 
+                        BoMessageTime.bmt_Short, BoStatusBarMessageType.smt_Warning);
                 }
 
+                // Adicionar linhas em lotes para melhor performance
+                const int BATCH_SIZE = 50;
+                for (int batch = 0; batch < totalLinhas; batch += BATCH_SIZE)
+                {
+                    var lote = linhasOrdenadas.Skip(batch).Take(BATCH_SIZE);
+                    foreach (var linha in lote)
+                    {
+                        AdicionarLinhaDataTable(dt, linha);
+                    }
+                    
+                    // Atualizar progresso apenas em lotes grandes
+                    if (mostrarProgresso && batch % 100 == 0)
+                    {
+                        Application.SBO_Application.StatusBar.SetText(
+                            $"Carregando... {batch}/{totalLinhas} registros", 
+                            BoMessageTime.bmt_Short, BoStatusBarMessageType.smt_Warning);
+                    }
+                }
+
+                // Carregar dados no grid de uma vez
                 oGrid.Clear();
                 oGrid.LoadFromDataSource();
-
-                // Só aplicar estilo se houver linhas
-                if (oGrid.RowCount > 0)
+                
+                // Aplicar estilos apenas se necessário
+                if (totalLinhas > 0)
                 {
-                    AplicarEstiloMatrix();
+                    AplicarEstiloMatrixOtimizado();
                 }
-
+                
                 // Recalcular totais após carregar os dados
                 RecalcularTotais();
                 AtualizarStatus();
                 AtualizarBotoes();
+                
+                // Indicar conclusão do carregamento
+                Application.SBO_Application.StatusBar.SetText($"Dados carregados com sucesso! {totalLinhas} registros.", 
+                    BoMessageTime.bmt_Short, BoStatusBarMessageType.smt_Success);
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Erro em CarregarMatrix: {ex.Message}");
+                Application.SBO_Application.StatusBar.SetText("Erro ao carregar dados.", 
+                    BoMessageTime.bmt_Short, BoStatusBarMessageType.smt_Error);
             }
         }
 
@@ -457,6 +498,9 @@ namespace ItTech.Tool.AddonNFS.Forms
                 int erros = 0;
 
                 const int LOTE_SIZE = 25;
+                const int LIMITE_TEMPO_REAL = 50;
+                var resultadosAcumulados = new List<ResultadoProcessamento>();
+                bool atualizarEmTempoReal = true;
 
                 for (int i = 0; i < total; i += LOTE_SIZE)
                 {
@@ -471,7 +515,26 @@ namespace ItTech.Tool.AddonNFS.Forms
                         )
                     );
 
-                    AtualizarResultados(resultados);
+                    // Lógica de atualização inteligente
+                    if (processadas < LIMITE_TEMPO_REAL)
+                    {
+                        // Primeiros 50: atualiza em tempo real
+                        AtualizarResultados(resultados);
+                        
+                        // Verifica se passou do limite neste lote
+                        if (processadas + lote.Count >= LIMITE_TEMPO_REAL && atualizarEmTempoReal)
+                        {
+                            atualizarEmTempoReal = false;
+                            Application.SBO_Application.StatusBar.SetText(
+                                "Processando lote maior... Interface será atualizada ao final.", 
+                                BoMessageTime.bmt_Short, BoStatusBarMessageType.smt_Warning);
+                        }
+                    }
+                    else
+                    {
+                        // Após 50: apenas acumula
+                        resultadosAcumulados.AddRange(resultados);
+                    }
 
                     sucessos += resultados.Count(r => r.Sucesso);
                     erros += resultados.Count(r => !r.Sucesso);
@@ -488,6 +551,17 @@ namespace ItTech.Tool.AddonNFS.Forms
                         await Task.Delay(50, _cancellationTokenSource.Token);
                 }
 
+                // Se acumulou resultados, atualiza tudo de uma vez
+                if (resultadosAcumulados.Count > 0)
+                {
+                    progress.Atualizar(95, "Atualizando interface com todos os resultados...");
+                    Application.SBO_Application.StatusBar.SetText(
+                        $"Atualizando {resultadosAcumulados.Count} resultados... Por favor aguarde.", 
+                        BoMessageTime.bmt_Short, BoStatusBarMessageType.smt_Warning);
+                    
+                    AtualizarResultados(resultadosAcumulados);
+                }
+
                 // Finalização
                 progress.Atualizar(100, "Concluído!");
                 progress.Fechar();
@@ -502,7 +576,8 @@ namespace ItTech.Tool.AddonNFS.Forms
             finally
             {
                 _processamentoEmAndamento = false;
-                CarregarDados();
+                // Apenas atualizar botões, não recarregar tudo
+                AtualizarBotoes();
             }
         }
 
@@ -515,49 +590,77 @@ namespace ItTech.Tool.AddonNFS.Forms
                 var dt = GetDataTable();
                 if (dt == null || resultados == null || resultados.Count == 0) return;
 
+                // Mostrar indicador apenas se houver muitos resultados
+                bool mostrarProgresso = resultados.Count > 50;
+                if (mostrarProgresso)
+                {
+                    Application.SBO_Application.StatusBar.SetText($"Atualizando {resultados.Count} resultados... Por favor aguarde.", 
+                        BoMessageTime.bmt_Short, BoStatusBarMessageType.smt_Warning);
+                }
+
+                // Criar índice para lookup O(1) ao invés de O(n²)
+                var codeToIndex = new Dictionary<string, int>();
+                for (int i = 0; i < dt.Rows.Count; i++)
+                {
+                    var code = dt.GetValue("Code", i)?.ToString();
+                    if (!string.IsNullOrEmpty(code))
+                    {
+                        codeToIndex[code] = i;
+                    }
+                }
+
+                // Criar índice para linhas também
+                var linhasPorCode = _grupo.Linhas.ToDictionary(l => l.Code, l => l);
+
+                // Atualizar DataTable com resultados - O(n) ao invés de O(n²)
                 foreach (var resultado in resultados)
                 {
-                    for (int i = 0; i < dt.Rows.Count; i++)
+                    if (codeToIndex.TryGetValue(resultado.CodigoLinha, out int index))
                     {
-                        if (dt.GetValue("Code", i).ToString() == resultado.CodigoLinha)
+                        dt.SetValue("Status", index, ObterTextoStatus(resultado.Sucesso ? StatusLinha.Sucesso : StatusLinha.Erro));
+                        dt.SetValue("Mensagem", index, Truncar(resultado.Mensagem, 254));
+                        dt.SetValue("Proc", index, "N");
+
+                        if (resultado.DocEntry.HasValue)
                         {
-                            dt.SetValue("Status", i, ObterTextoStatus(resultado.Sucesso ? StatusLinha.Sucesso : StatusLinha.Erro));
-                            dt.SetValue("Mensagem", i, Truncar(resultado.Mensagem, 254));
-                            dt.SetValue("Proc", i, "N");
+                            dt.SetValue("DocEntry", index, resultado.DocEntry.Value);
+                            dt.SetValue("DocNum", index, resultado.DocNum ?? resultado.DocEntry.Value);
+                        }
 
-                            if (resultado.DocEntry.HasValue)
-                            {
-                                dt.SetValue("DocEntry", i, resultado.DocEntry.Value);
-                                dt.SetValue("DocNum", i, resultado.DocNum ?? resultado.DocEntry.Value);
-                            }
-
-                            // Atualizar objeto
-                            var linha = _grupo.Linhas.FirstOrDefault(l => l.Code == resultado.CodigoLinha);
-                            if (linha != null)
-                            {
-                                linha.Status = resultado.Sucesso ? StatusLinha.Sucesso : StatusLinha.Erro;
-                                linha.MensagemErro = resultado.Mensagem;
-                                linha.DocEntry = resultado.DocEntry;
-                                linha.DocNum = resultado.DocNum;
-                            }
-                            break;
+                        // Atualizar objeto - também O(1)
+                        if (linhasPorCode.TryGetValue(resultado.CodigoLinha, out var linha))
+                        {
+                            linha.Status = resultado.Sucesso ? StatusLinha.Sucesso : StatusLinha.Erro;
+                            linha.MensagemErro = resultado.Mensagem;
+                            linha.DocEntry = resultado.DocEntry;
+                            linha.DocNum = resultado.DocNum;
                         }
                     }
                 }
 
+                // Atualizar grid apenas uma vez
                 oGrid.LoadFromDataSource();
-
-                // Só aplicar estilo se houver linhas
-                if (oGrid.RowCount > 0)
+                
+                // Aplicar estilo apenas nas linhas que mudaram
+                AplicarEstiloMatrixOtimizado(resultados);
+                
+                // Atualizar totais e status apenas
+                RecalcularTotais();
+                AtualizarStatus();
+                AtualizarBotoes();
+                
+                // Indicar conclusão se estava mostrando progresso
+                if (mostrarProgresso)
                 {
-                    AplicarEstiloMatrix();
+                    Application.SBO_Application.StatusBar.SetText("Resultados atualizados com sucesso!", 
+                        BoMessageTime.bmt_Short, BoStatusBarMessageType.smt_Success);
                 }
-
-                AtualizarInterface();
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Erro em AtualizarResultados: {ex.Message}");
+                Application.SBO_Application.StatusBar.SetText("Erro ao atualizar resultados.", 
+                    BoMessageTime.bmt_Short, BoStatusBarMessageType.smt_Error);
             }
         }
 
@@ -683,7 +786,7 @@ namespace ItTech.Tool.AddonNFS.Forms
             return Tuple.Create(total, sucessos, erros, pendentes);
         }
 
-        private void AplicarEstiloMatrix()
+        private void AplicarEstiloMatrixOtimizado(List<ResultadoProcessamento> resultadosRecentes = null)
         {
             try
             {
@@ -693,44 +796,104 @@ namespace ItTech.Tool.AddonNFS.Forms
                 var dt = GetDataTable();
                 if (dt == null) return;
 
-                // Aplicar estilos linha por linha
-                for (int i = 1; i <= oGrid.RowCount; i++)
+                // Mostrar indicador apenas se houver muitas linhas
+                bool mostrarProgresso = oGrid.RowCount > 100;
+                if (mostrarProgresso)
                 {
-                    try
+                    Application.SBO_Application.StatusBar.SetText("Aplicando formatação visual...", 
+                        BoMessageTime.bmt_Short, BoStatusBarMessageType.smt_Warning);
+                }
+
+                // Criar dicionário para lookup O(1)
+                var linhasPorCode = _grupo.Linhas.ToDictionary(l => l.Code, l => l);
+                
+                // Se temos resultados recentes, processar apenas essas linhas
+                if (resultadosRecentes != null && resultadosRecentes.Count > 0)
+                {
+                    var codesAlterados = new HashSet<string>(resultadosRecentes.Select(r => r.CodigoLinha));
+                    
+                    for (int i = 1; i <= oGrid.RowCount; i++)
                     {
                         int dtIndex = i - 1;
                         if (dtIndex >= dt.Rows.Count) continue;
 
                         var code = dt.GetValue("Code", dtIndex)?.ToString();
-                        if (!string.IsNullOrEmpty(code))
+                        if (!string.IsNullOrEmpty(code) && codesAlterados.Contains(code))
                         {
-                            var linha = _grupo.Linhas.FirstOrDefault(l => l.Code == code);
-
-                            if (linha != null)
+                            if (linhasPorCode.TryGetValue(code, out var linha))
                             {
-                                // Desabilitar visualmente checkboxes de linhas já processadas
-                                if (linha.Status != StatusLinha.Pendente)
-                                {
-                                    oGrid.CommonSetting.SetCellBackColor(i, 1, Color.LightGray.ToArgb());
-                                }
-
-                                // Cor de status
-                                if (CORES_STATUS.ContainsKey(linha.Status))
-                                {
-                                    oGrid.CommonSetting.SetCellBackColor(i, 10, CORES_STATUS[linha.Status]);
-                                }
+                                AplicarCorLinha(i, linha);
+                                _ultimoStatusCache[code] = linha.Status;
                             }
                         }
-
-                        // Zebra
-                        oGrid.CommonSetting.SetRowBackColor(i, (i - 1) % 2 == 0 ? Color.White.ToArgb() : Color.FromArgb(245, 247, 250).ToArgb());
                     }
-                    catch { /* Ignorar erro de linha individual */ }
+                }
+                else
+                {
+                    // Primeira vez ou recarregamento completo
+                    _ultimoStatusCache.Clear();
+                    
+                    for (int i = 1; i <= oGrid.RowCount; i++)
+                    {
+                        int dtIndex = i - 1;
+                        if (dtIndex >= dt.Rows.Count) continue;
+
+                        var code = dt.GetValue("Code", dtIndex)?.ToString();
+                        if (!string.IsNullOrEmpty(code) && linhasPorCode.TryGetValue(code, out var linha))
+                        {
+                            AplicarCorLinha(i, linha);
+                            _ultimoStatusCache[code] = linha.Status;
+                        }
+                    }
+                    
+                    // Aplicar zebra stripe apenas uma vez
+                    if (!_zebraStripeAplicado)
+                    {
+                        AplicarZebraStripe();
+                        _zebraStripeAplicado = true;
+                    }
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Erro em AplicarEstiloMatrix: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Erro em AplicarEstiloMatrixOtimizado: {ex.Message}");
+            }
+        }
+        
+        private void AplicarCorLinha(int row, LinhaImportacao linha)
+        {
+            try
+            {
+                // Checkbox - desabilitar visualmente se não pendente
+                if (linha.Status != StatusLinha.Pendente)
+                {
+                    oGrid.CommonSetting.SetCellBackColor(row, 1, Color.LightGray.ToArgb());
+                }
+                
+                // Cor de status
+                if (CORES_STATUS.TryGetValue(linha.Status, out int cor))
+                {
+                    oGrid.CommonSetting.SetCellBackColor(row, 10, cor);
+                }
+            }
+            catch { }
+        }
+        
+        private void AplicarZebraStripe()
+        {
+            try
+            {
+                int corBranca = Color.White.ToArgb();
+                int corCinza = Color.FromArgb(245, 247, 250).ToArgb();
+                
+                for (int i = 1; i <= oGrid.RowCount; i++)
+                {
+                    oGrid.CommonSetting.SetRowBackColor(i, (i - 1) % 2 == 0 ? corBranca : corCinza);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Erro ao aplicar zebra stripe: {ex.Message}");
             }
         }
 
@@ -837,12 +1000,7 @@ namespace ItTech.Tool.AddonNFS.Forms
 
                     oGrid.Clear();
                     oGrid.LoadFromDataSource();
-
-                    // Só aplicar estilo se houver linhas
-                    if (oGrid.RowCount > 0)
-                    {
-                        AplicarEstiloMatrix();
-                    }
+                    AplicarEstiloMatrixOtimizado();
 
                     AtualizarInterface();
 
@@ -955,6 +1113,12 @@ namespace ItTech.Tool.AddonNFS.Forms
             {
                 System.Diagnostics.Debug.WriteLine($"Erro ao fechar: {ex.Message}");
             }
+
+            // Limpar cache
+            _ultimoStatusCache?.Clear();
+            _zebraStripeAplicado = false;
+
+            FormManager.RemoverFormulario(UIAPIRawForm.UniqueID);
         }
 
         private void Form_ResizeAfter(SBOItemEventArg pVal)
@@ -1144,6 +1308,10 @@ namespace ItTech.Tool.AddonNFS.Forms
 
             try
             {
+                // Mostrar mensagem antes de congelar
+                Application.SBO_Application.StatusBar.SetText("Processando...", 
+                    BoMessageTime.bmt_Short, BoStatusBarMessageType.smt_Warning);
+                
                 UIAPIRawForm.Freeze(true);
                 acao();
             }

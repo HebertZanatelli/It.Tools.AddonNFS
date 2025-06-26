@@ -39,19 +39,21 @@ namespace ItTech.Tool.AddonNFS
 
                 try
                 {
-                    // Se o menu já existe, remove primeiro
-                    if (Application.SBO_Application.Menus.Exists("ITTECH_NFS"))
+                    // Verificar se o menu não existe antes de adicionar
+                    if (!Application.SBO_Application.Menus.Exists("ITTECH_NFS"))
                     {
-                        Application.SBO_Application.Menus.RemoveEx("ITTECH_NFS");
+                        oMenus.AddEx(oCreationPackage);
                     }
-
-                    oMenus.AddEx(oCreationPackage);
+                    else
+                    {
+                        // Menu já existe, apenas continuar sem erro
+                        System.Diagnostics.Debug.WriteLine("Menu ITTECH_NFS já existe, continuando...");
+                    }
                 }
                 catch (Exception e)
                 {
-                    // Menu já existe, continuar
-                    Application.SBO_Application.SetStatusBarMessage($"Menu principal já existe: {e.Message}",
-                        SAPbouiCOM.BoMessageTime.bmt_Short, false);
+                    // Log silencioso para não aparecer na instalação
+                    System.Diagnostics.Debug.WriteLine($"Aviso ao criar menu: {e.Message}");
                 }
 
                 // Adicionar submenus
@@ -59,8 +61,7 @@ namespace ItTech.Tool.AddonNFS
             }
             catch (Exception ex)
             {
-                Application.SBO_Application.SetStatusBarMessage($"Erro ao criar menus: {ex.Message}",
-                    SAPbouiCOM.BoMessageTime.bmt_Short, true);
+                System.Diagnostics.Debug.WriteLine($"Erro ao criar menus: {ex.Message}");
             }
         }
 
@@ -79,42 +80,15 @@ namespace ItTech.Tool.AddonNFS
                 oCreationPackage.Type = SAPbouiCOM.BoMenuType.mt_STRING;
                 oCreationPackage.UniqueID = "ITTECH_NFS_PROC";
                 oCreationPackage.String = "Processar NFS-e em Lote";
+                
                 if (!Application.SBO_Application.Menus.Exists("ITTECH_NFS_PROC"))
-                {
-                    oMenus.AddEx(oCreationPackage);
-                }
-
-                //// Criar submenu - Configurações
-                //oCreationPackage.Type = SAPbouiCOM.BoMenuType.mt_STRING;
-                //oCreationPackage.UniqueID = "ITTECH_NFS_CONFIG";
-                //oCreationPackage.String = "Configurações";
-                //if (!Application.SBO_Application.Menus.Exists("ITTECH_NFS_CONFIG"))
-                //{
-                //    oMenus.AddEx(oCreationPackage);
-                //}
-
-                //// Criar submenu - Status
-                //oCreationPackage.Type = SAPbouiCOM.BoMenuType.mt_STRING;
-                //oCreationPackage.UniqueID = "ITTECH_NFS_STATUS";
-                //oCreationPackage.String = "Status dos Formulários";
-                //if (!Application.SBO_Application.Menus.Exists("ITTECH_NFS_STATUS"))
-                //{
-                //    oMenus.AddEx(oCreationPackage);
-                //}
-
-                //// Criar submenu - Sobre
-                //oCreationPackage.Type = SAPbouiCOM.BoMenuType.mt_STRING;
-                //oCreationPackage.UniqueID = "ITTECH_NFS_ABOUT";
-                //oCreationPackage.String = "Sobre";
-                if (!Application.SBO_Application.Menus.Exists("ITTECH_NFS_ABOUT"))
                 {
                     oMenus.AddEx(oCreationPackage);
                 }
             }
             catch (Exception er)
             {
-                Application.SBO_Application.SetStatusBarMessage($"Erro ao criar submenus: {er.Message}",
-                    SAPbouiCOM.BoMessageTime.bmt_Short, true);
+                System.Diagnostics.Debug.WriteLine($"Erro ao criar submenus: {er.Message}");
             }
         }
 
@@ -134,18 +108,6 @@ namespace ItTech.Tool.AddonNFS
                         case "ITTECH_NFS_PROC":
                             AbrirFormularioSelecionarGrupo();
                             break;
-
-                        //case "ITTECH_NFS_CONFIG":
-                        //    AbrirFormularioConfiguracao();
-                        //    break;
-
-                        //case "ITTECH_NFS_STATUS":
-                        //    MostrarStatusFormularios();
-                        //    break;
-
-                        //case "ITTECH_NFS_ABOUT":
-                        //    MostrarSobre();
-                        //    break;
                     }
                 }
             }
@@ -203,118 +165,6 @@ namespace ItTech.Tool.AddonNFS
         }
 
         /// <summary>
-        /// Abre o formulário de configurações
-        /// </summary>
-        private void AbrirFormularioConfiguracao()
-        {
-            try
-            {
-                if (FormManager.FormularioEstaAberto(FormManager.FORM_CONFIG))
-                {
-                    FormManager.TrazerParaFrente(FormManager.FORM_CONFIG);
-                    Application.SBO_Application.SetStatusBarMessage("Formulário de configurações já está aberto",
-                        SAPbouiCOM.BoMessageTime.bmt_Short, false);
-                }
-                else
-                {
-                    // Por enquanto, apenas mostrar mensagem
-                    Application.SBO_Application.MessageBox(
-                        "Configurações em desenvolvimento\n\n" +
-                        "Funcionalidades previstas:\n" +
-                        "- Configuração de caminhos padrão\n" +
-                        "- Parâmetros de processamento\n" +
-                        "- Configurações de Service Layer\n" +
-                        "- Logs e diagnósticos",
-                        1, "Ok", "", "");
-
-                    // TODO: Quando implementar:
-                    // FormConfiguracoes formConfig = new FormConfiguracoes();
-                    // formConfig.Show();
-                }
-            }
-            catch (Exception ex)
-            {
-                Application.SBO_Application.SetStatusBarMessage($"Erro: {ex.Message}",
-                    SAPbouiCOM.BoMessageTime.bmt_Short, true);
-            }
-        }
-
-        /// <summary>
-        /// Mostra o status dos formulários abertos
-        /// </summary>
-        private void MostrarStatusFormularios()
-        {
-            try
-            {
-                string status = FormManager.ObterStatusFormularios();
-
-                if (string.IsNullOrEmpty(status) || status.Contains("Formulários abertos: 0"))
-                {
-                    Application.SBO_Application.MessageBox(
-                        "Nenhum formulário do add-on está aberto no momento.\n\n" +
-                        "Use o menu 'Processar NFS-e em Lote' para iniciar.",
-                        1, "Ok", "", "");
-                }
-                else
-                {
-                    Application.SBO_Application.MessageBox(status, 1, "Ok", "", "");
-                }
-            }
-            catch (Exception ex)
-            {
-                Application.SBO_Application.SetStatusBarMessage($"Erro ao obter status: {ex.Message}",
-                    SAPbouiCOM.BoMessageTime.bmt_Short, true);
-            }
-        }
-
-        /// <summary>
-        /// Mostra informações sobre o add-on
-        /// </summary>
-        private void MostrarSobre()
-        {
-            try
-            {
-                // Obter um resumo simples dos formulários
-                string statusFormularios = FormManager.ObterStatusFormularios();
-                string resumoFormularios = "";
-
-                if (!string.IsNullOrEmpty(statusFormularios))
-                {
-                    // Extrair apenas a primeira linha com contagem
-                    var linhas = statusFormularios.Split('\n');
-                    if (linhas.Length > 0)
-                    {
-                        resumoFormularios = "\n\n" + linhas[0];
-                    }
-                }
-
-                string sobre = "Add-on NFS-e em Lote\n" +
-                             "━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n" +
-                             "Versão: 1.0.0\n" +
-                             "Build: 2025.01.001\n\n" +
-                             "Desenvolvido por: ItTech Consultoria\n" +
-                             "Cliente: Tools\n\n" +
-                             "Descrição:\n" +
-                             "Este add-on permite a emissão de Notas Fiscais de Serviço em lote " +
-                             "através da importação de planilhas Excel. Processa até 500 documentos " +
-                             "com recursos de reprocessamento e controle de erros.\n\n" +
-                             "Funcionalidades:\n" +
-                             "• Importação de planilhas Excel\n" +
-                             "• Processamento em lote via Service Layer\n" +
-                             "• Reprocessamento de linhas com erro\n" +
-                             "• Histórico de processamentos" +
-                             resumoFormularios;
-
-                Application.SBO_Application.MessageBox(sobre, 1, "Ok", "", "");
-            }
-            catch (Exception ex)
-            {
-                Application.SBO_Application.SetStatusBarMessage($"Erro ao mostrar sobre: {ex.Message}",
-                    SAPbouiCOM.BoMessageTime.bmt_Short, true);
-            }
-        }
-
-        /// <summary>
         /// Remove os menus do add-on (para usar na desinstalação)
         /// </summary>
         public void RemoveMenuItems()
@@ -325,14 +175,9 @@ namespace ItTech.Tool.AddonNFS
                 FormManager.FecharTodosFormularios();
 
                 // Remover submenus
-                string[] submenus = { "ITTECH_NFS_PROC", "ITTECH_NFS_CONFIG", "ITTECH_NFS_STATUS", "ITTECH_NFS_ABOUT" };
-
-                foreach (string menuId in submenus)
+                if (Application.SBO_Application.Menus.Exists("ITTECH_NFS_PROC"))
                 {
-                    if (Application.SBO_Application.Menus.Exists(menuId))
-                    {
-                        Application.SBO_Application.Menus.RemoveEx(menuId);
-                    }
+                    Application.SBO_Application.Menus.RemoveEx("ITTECH_NFS_PROC");
                 }
 
                 // Remover menu principal
@@ -341,13 +186,11 @@ namespace ItTech.Tool.AddonNFS
                     Application.SBO_Application.Menus.RemoveEx("ITTECH_NFS");
                 }
 
-                Application.SBO_Application.SetStatusBarMessage("Menus do add-on removidos com sucesso",
-                    SAPbouiCOM.BoMessageTime.bmt_Short, false);
+                System.Diagnostics.Debug.WriteLine("Menus do add-on removidos");
             }
             catch (Exception ex)
             {
-                Application.SBO_Application.SetStatusBarMessage($"Erro ao remover menus: {ex.Message}",
-                    SAPbouiCOM.BoMessageTime.bmt_Short, true);
+                System.Diagnostics.Debug.WriteLine($"Erro ao remover menus: {ex.Message}");
             }
         }
     }
