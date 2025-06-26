@@ -46,8 +46,8 @@ namespace ItTech.Tool.AddonNFS.Forms
         private readonly Dictionary<StatusLinha, int> CORES_STATUS = new Dictionary<StatusLinha, int>
         {
             { StatusLinha.Sucesso, 11854805 },   // Verde
-            { StatusLinha.Erro, 16750899 },      // Vermelho
-            { StatusLinha.Pendente, 16771583 }   // Amarelo
+            { StatusLinha.Erro, 2237106 },       // Vermelho escuro (RGB: 178,34,34)
+            { StatusLinha.Pendente, 16436871 }   // Azul claro (RGB: 135,206,250)
         };
 
         #endregion
@@ -265,6 +265,10 @@ namespace ItTech.Tool.AddonNFS.Forms
         {
             try
             {
+                // Mostrar indicador de carregamento
+                Application.SBO_Application.StatusBar.SetText("Carregando dados... Por favor aguarde.", 
+                    BoMessageTime.bmt_Short, BoStatusBarMessageType.smt_Warning);
+                
                 var dt = GetDataTable();
                 if (dt == null) return;
 
@@ -273,6 +277,8 @@ namespace ItTech.Tool.AddonNFS.Forms
                 if (_grupo.Linhas == null || _grupo.Linhas.Count == 0)
                 {
                     oGrid.Clear();
+                    Application.SBO_Application.StatusBar.SetText("Nenhum dado para exibir.", 
+                        BoMessageTime.bmt_Short, BoStatusBarMessageType.smt_Success);
                     return;
                 }
 
@@ -291,10 +297,16 @@ namespace ItTech.Tool.AddonNFS.Forms
                 RecalcularTotais();
                 AtualizarStatus();
                 AtualizarBotoes();
+                
+                // Indicar conclusão do carregamento
+                Application.SBO_Application.StatusBar.SetText($"Dados carregados com sucesso! {_grupo.Linhas.Count} registros.", 
+                    BoMessageTime.bmt_Short, BoStatusBarMessageType.smt_Success);
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Erro em CarregarMatrix: {ex.Message}");
+                Application.SBO_Application.StatusBar.SetText("Erro ao carregar dados.", 
+                    BoMessageTime.bmt_Short, BoStatusBarMessageType.smt_Error);
             }
         }
 
@@ -480,6 +492,10 @@ namespace ItTech.Tool.AddonNFS.Forms
             {
                 if (_grupo == null || _grupo.Linhas == null) return;
 
+                // Indicar que está atualizando interface
+                Application.SBO_Application.StatusBar.SetText("Atualizando resultados... Por favor aguarde.", 
+                    BoMessageTime.bmt_Short, BoStatusBarMessageType.smt_Warning);
+
                 var dt = GetDataTable();
                 if (dt == null || resultados == null || resultados.Count == 0) return;
 
@@ -517,10 +533,16 @@ namespace ItTech.Tool.AddonNFS.Forms
                 
                 AplicarEstiloMatrixOtimizado(resultados);
                 AtualizarInterface();
+                
+                // Indicar conclusão
+                Application.SBO_Application.StatusBar.SetText("Resultados atualizados com sucesso!", 
+                    BoMessageTime.bmt_Short, BoStatusBarMessageType.smt_Success);
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Erro em AtualizarResultados: {ex.Message}");
+                Application.SBO_Application.StatusBar.SetText("Erro ao atualizar resultados.", 
+                    BoMessageTime.bmt_Short, BoStatusBarMessageType.smt_Error);
             }
         }
 
@@ -652,6 +674,14 @@ namespace ItTech.Tool.AddonNFS.Forms
 
                 var dt = GetDataTable();
                 if (dt == null) return;
+
+                // Mostrar indicador apenas se houver muitas linhas
+                bool mostrarProgresso = oGrid.RowCount > 100;
+                if (mostrarProgresso)
+                {
+                    Application.SBO_Application.StatusBar.SetText("Aplicando formatação visual...", 
+                        BoMessageTime.bmt_Short, BoStatusBarMessageType.smt_Warning);
+                }
 
                 // Criar dicionário para lookup O(1)
                 var linhasPorCode = _grupo.Linhas.ToDictionary(l => l.Code, l => l);
@@ -1121,6 +1151,10 @@ namespace ItTech.Tool.AddonNFS.Forms
 
             try
             {
+                // Mostrar mensagem antes de congelar
+                Application.SBO_Application.StatusBar.SetText("Processando...", 
+                    BoMessageTime.bmt_Short, BoStatusBarMessageType.smt_Warning);
+                
                 UIAPIRawForm.Freeze(true);
                 acao();
             }
