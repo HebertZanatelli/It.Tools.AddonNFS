@@ -643,7 +643,6 @@ namespace ItTech.Tool.AddonNFS.Forms
 
                 MtxLinhas.Clear();
                 MtxLinhas.LoadFromDataSource();
-                MtxLinhas.AutoResizeColumns();
 
                 // Selecionar todas por padrão se nenhuma estiver selecionada
                 if (_linhas.Count > 0 && _linhas.All(l => !l.Selecionada))
@@ -988,7 +987,6 @@ namespace ItTech.Tool.AddonNFS.Forms
 
                 MtxLinhas.Clear();
                 MtxLinhas.LoadFromDataSource();
-                MtxLinhas.AutoResizeColumns();
 
                 AtualizarContadoresOtimizado();
                 AtualizarInterface();
@@ -1543,14 +1541,7 @@ namespace ItTech.Tool.AddonNFS.Forms
 
         private void Form_ResizeAfter(SBOItemEventArg pVal)
         {
-            try
-            {
-                if (MtxLinhas != null)
-                {
-                    MtxLinhas.AutoResizeColumns();
-                }
-            }
-            catch { }
+            // Nenhuma ação necessária - larguras definidas no XML
         }
 
         #endregion
