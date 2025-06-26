@@ -799,17 +799,39 @@ namespace ItTech.Tool.AddonNFS.Forms
 
                 try
                 {
-                    using (System.Windows.Forms.OpenFileDialog ofd = new System.Windows.Forms.OpenFileDialog())
+                    // Criar dummy form para garantir que o diálogo apareça no SAP B1
+                    using (System.Windows.Forms.Form dummyForm = new System.Windows.Forms.Form())
                     {
-                        ofd.Filter = "Arquivos Excel (*.xlsx)|*.xlsx|Todos os arquivos (*.*)|*.*";
-                        ofd.Title = "Selecione o arquivo Excel com os dados das NFS-e";
-                        ofd.Multiselect = false;
-                        ofd.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-
-                        if (ofd.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                        // Configurar dummy form para ser invisível mas funcional
+                        dummyForm.TopMost = true;
+                        dummyForm.WindowState = System.Windows.Forms.FormWindowState.Minimized;
+                        dummyForm.ShowInTaskbar = false;
+                        dummyForm.FormBorderStyle = System.Windows.Forms.FormBorderStyle.None;
+                        dummyForm.Size = new System.Drawing.Size(1, 1);
+                        dummyForm.StartPosition = System.Windows.Forms.FormStartPosition.Manual;
+                        dummyForm.Location = new System.Drawing.Point(-1000, -1000);
+                        dummyForm.Opacity = 0;
+                        
+                        // IMPORTANTE: Mostrar o form para criar handle válido
+                        dummyForm.Show();
+                        dummyForm.BringToFront();
+                        
+                        using (System.Windows.Forms.OpenFileDialog ofd = new System.Windows.Forms.OpenFileDialog())
                         {
-                            arquivo = ofd.FileName;
+                            ofd.Filter = "Arquivos Excel (*.xlsx)|*.xlsx|Todos os arquivos (*.*)|*.*";
+                            ofd.Title = "Selecione o arquivo Excel com os dados das NFS-e";
+                            ofd.Multiselect = false;
+                            ofd.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+
+                            // Usar o dummy form como parent
+                            if (ofd.ShowDialog(dummyForm) == System.Windows.Forms.DialogResult.OK)
+                            {
+                                arquivo = ofd.FileName;
+                            }
                         }
+                        
+                        // Fechar dummy form
+                        dummyForm.Close();
                     }
 
                     // Processar resultado na mesma thread
@@ -827,6 +849,7 @@ namespace ItTech.Tool.AddonNFS.Forms
                 catch (Exception ex)
                 {
                     // Log erro se necessário 
+                    System.Diagnostics.Debug.WriteLine($"Erro no diálogo: {ex.Message}");
                     ReabilitarBotaoAbrir();
                 }
             });
