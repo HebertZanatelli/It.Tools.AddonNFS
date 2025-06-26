@@ -1,0 +1,1150 @@
+﻿using ItTech.Tool.AddonNFS.Controllers;
+using ItTech.Tool.AddonNFS.Models;
+using ItTech.Tool.AddonNFS.Services;
+using ItTech.Tool.AddonNFS.Utils;
+using SAPbouiCOM;
+using SAPbouiCOM.Framework;
+using System;
+using System.Collections.Generic;
+using System.Drawing;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Application = SAPbouiCOM.Framework.Application;
+
+namespace ItTech.Tool.AddonNFS.Forms
+{
+    [FormAttribute("ITTECH_NFS_PRO", "Forms/FormProcessamentoNFS.b1f")]
+    class FormProcessamentoNFS : UserFormBase
+    {
+        #region Campos
+
+        private GrupoLote _grupo;
+        private ProcessamentoNFSController _processamentoController;
+        private ServiceLayerInvoiceClient _serviceLayerClient;
+        private bool _processamentoEmAndamento = false;
+        private bool _configurado = false;
+        private CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
+        private string _formOriginId;
+
+        // Controles
+        private StaticText lblTitulo, lblStatus;
+        private EditText txtStatus, txtGrupo, txtDtLanc, txtDtDoc;
+        private ComboBox cboFiltro;
+        private Button btnProc, btnExpErr, btnVoltar, btnFechar;
+        private Matrix oGrid;
+
+        // Estatísticas
+        private int _totalSelecionadas = 0;
+        private decimal _valorTotalSelecionado = 0;
+
+        // Cores de status
+        private readonly Dictionary<StatusLinha, int> CORES_STATUS = new Dictionary<StatusLinha, int>
+        {
+            { StatusLinha.Sucesso, 11854805 },   // Verde
+            { StatusLinha.Erro, 16750899 },      // Vermelho
+            { StatusLinha.Pendente, 16771583 }   // Amarelo
+        };
+
+        #endregion
+
+        #region Inicialização
+
+        public FormProcessamentoNFS(string formOriginId = null)
+        {
+            _formOriginId = formOriginId;
+            ConfigurarSupressaoExcecoes();
+        }
+
+        private void ConfigurarSupressaoExcecoes()
+        {
+            AppDomain.CurrentDomain.UnhandledException += (s, e) =>
+                System.Diagnostics.Debug.WriteLine($"Exceção suprimida: {(e.ExceptionObject as Exception)?.Message}");
+        }
+
+        public override void OnInitializeComponent()
+        {
+            // Inicializar controles
+            lblTitulo = GetControl<StaticText>("lblTitulo");
+            lblStatus = GetControl<StaticText>("lblStatus");
+            txtStatus = GetControl<EditText>("txtStatus");
+            txtGrupo = GetControl<EditText>("txtGrupo");
+            txtDtLanc = GetControl<EditText>("txtDtLanc");
+            txtDtDoc = GetControl<EditText>("txtDtDoc");
+            cboFiltro = GetControl<ComboBox>("cboFiltro");
+            btnProc = GetControl<Button>("btnProc");
+            btnExpErr = GetControl<Button>("btnExpErr");
+            btnVoltar = GetControl<Button>("btnVoltar");
+            btnFechar = GetControl<Button>("btnFechar");
+            oGrid = GetControl<Matrix>("oGrid");
+
+            // Configurar eventos principais
+            cboFiltro.ComboSelectAfter += CboFiltro_ComboSelectAfter;
+            oGrid.ClickAfter += Matrix_ClickAfter;
+            btnProc.ClickBefore += BtnProcessar_ClickBefore;
+            btnExpErr.ClickBefore += BtnExportarErros_ClickBefore;
+            btnVoltar.ClickBefore += BtnVoltar_ClickBefore;
+            btnFechar.ClickBefore += BtnFechar_ClickBefore;
+
+            OnCustomInitialize();
+        }
+
+        private T GetControl<T>(string itemId) where T : class
+        {
+            return GetItem(itemId).Specific as T;
+        }
+
+        private void OnCustomInitialize()
+        {
+            try
+            {
+                if (_configurado) return;
+
+                var company = (SAPbobsCOM.Company)Application.SBO_Application.Company.GetDICompany();
+                _serviceLayerClient = new ServiceLayerInvoiceClient();
+                _processamentoController = new ProcessamentoNFSController(company, _serviceLayerClient);
+
+                ConfigurarFormulario();
+                _configurado = true;
+            }
+            catch (Exception ex)
+            {
+                MostrarMensagem($"Erro ao inicializar: {ex.Message}");
+            }
+        }
+
+        private void ConfigurarFormulario()
+        {
+            ConfigurarDataTable();
+            ConfigurarMatrix();
+            ConfigurarFiltros();
+        }
+
+        #endregion
+
+        #region Configuração
+
+        private void ConfigurarDataTable()
+        {
+            try
+            {
+                var dt = UIAPIRawForm.DataSources.DataTables.Add("dtResult");
+
+                // Adicionar colunas
+                dt.Columns.Add("Linha", BoFieldsType.ft_Integer);
+                dt.Columns.Add("Proc", BoFieldsType.ft_AlphaNumeric, 1);
+                dt.Columns.Add("Filial", BoFieldsType.ft_Integer);
+                dt.Columns.Add("CodCli", BoFieldsType.ft_AlphaNumeric, 50);
+                dt.Columns.Add("Cliente", BoFieldsType.ft_AlphaNumeric, 200);
+                dt.Columns.Add("CodItem", BoFieldsType.ft_AlphaNumeric, 50);
+                dt.Columns.Add("Descricao", BoFieldsType.ft_AlphaNumeric, 200);
+                dt.Columns.Add("Utiliz", BoFieldsType.ft_AlphaNumeric, 50);
+                dt.Columns.Add("DocEntry", BoFieldsType.ft_Integer);
+                dt.Columns.Add("DocNum", BoFieldsType.ft_Integer);
+                dt.Columns.Add("Status", BoFieldsType.ft_AlphaNumeric, 50);
+                dt.Columns.Add("CodImp", BoFieldsType.ft_AlphaNumeric, 50);
+                dt.Columns.Add("CodSeq", BoFieldsType.ft_AlphaNumeric, 50);
+                dt.Columns.Add("Condicao", BoFieldsType.ft_AlphaNumeric, 50);
+                dt.Columns.Add("ObsNF", BoFieldsType.ft_AlphaNumeric, 254);
+                dt.Columns.Add("TipoTrib", BoFieldsType.ft_AlphaNumeric, 50);
+                dt.Columns.Add("Valor", BoFieldsType.ft_Float);
+                dt.Columns.Add("Mensagem", BoFieldsType.ft_AlphaNumeric, 254);
+                dt.Columns.Add("Code", BoFieldsType.ft_AlphaNumeric, 50);
+            }
+            catch { /* DataTable já existe */ }
+        }
+
+        private void ConfigurarMatrix()
+        {
+            try
+            {
+                // Vincular colunas
+                foreach (Column col in oGrid.Columns)
+                {
+                    if (col.UniqueID != "#")
+                        col.DataBind.Bind("dtResult", col.UniqueID);
+                }
+                oGrid.Columns.Item("#").DataBind.Bind("dtResult", "Linha");
+
+                // LinkedButtons
+                ConfigurarLinkedButton("CodCli", BoLinkedObject.lf_BusinessPartner);
+                ConfigurarLinkedButton("CodItem", BoLinkedObject.lf_Items);
+                ConfigurarLinkedButton("DocEntry", BoLinkedObject.lf_Invoice);
+            }
+            catch (Exception ex)
+            {
+                MostrarMensagem($"Erro ao configurar matrix: {ex.Message}");
+            }
+        }
+
+        private void ConfigurarLinkedButton(string coluna, BoLinkedObject tipo)
+        {
+            var link = (LinkedButton)oGrid.Columns.Item(coluna).ExtendedObject;
+            link.LinkedObject = tipo;
+        }
+
+        private void ConfigurarFiltros()
+        {
+            try
+            {
+                // Limpar valores existentes
+                if (cboFiltro.ValidValues.Count > 0)
+                {
+                    for (int i = cboFiltro.ValidValues.Count - 1; i >= 0; i--)
+                    {
+                        cboFiltro.ValidValues.Remove(i, BoSearchKey.psk_Index);
+                    }
+                }
+
+                // Adicionar novos valores
+                cboFiltro.ValidValues.Add("TODOS", "Mostrar Todos");
+                cboFiltro.ValidValues.Add("SUCESSO", "Com Sucesso");
+                cboFiltro.ValidValues.Add("ERRO", "Com Erro");
+                cboFiltro.ValidValues.Add("PENDENTE", "Pendentes");
+
+                cboFiltro.Select("TODOS", BoSearchKey.psk_ByValue);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Erro ao configurar filtros: {ex.Message}");
+            }
+        }
+
+        #endregion
+
+        #region Entrada de Dados
+
+        public void SetGrupo(GrupoLote grupo)
+        {
+            if (grupo == null)
+            {
+                MostrarMensagem("Grupo não pode ser nulo.");
+                return;
+            }
+
+            _grupo = grupo;
+
+            try
+            {
+                CarregarDados();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Erro ao carregar dados: {ex.Message}");
+                MostrarErro($"Erro ao carregar dados: {ex.Message}");
+            }
+        }
+
+        private void CarregarDados()
+        {
+            ExecutarComFreeze(() =>
+            {
+                // Cabeçalho
+                txtGrupo.Value = _grupo.Nome;
+                txtDtLanc.Value = _grupo.DataLancamento.ToString("dd/MM/yyyy");
+                txtDtDoc.Value = _grupo.DataDocumento.ToString("dd/MM/yyyy");
+
+                // Carregar linhas se necessário
+                if (_grupo.Linhas == null || _grupo.Linhas.Count == 0)
+                {
+                    var controller = new GrupoLoteController(
+                        (SAPbobsCOM.Company)Application.SBO_Application.Company.GetDICompany()
+                    );
+                    _grupo.Linhas = controller.ObterLinhasGrupo(_grupo.Code);
+                }
+
+                CarregarMatrix();
+            });
+        }
+
+        private void CarregarMatrix()
+        {
+            try
+            {
+                var dt = GetDataTable();
+                if (dt == null) return;
+
+                dt.Rows.Clear();
+
+                if (_grupo.Linhas == null || _grupo.Linhas.Count == 0)
+                {
+                    oGrid.Clear();
+                    return;
+                }
+
+                var linhasOrdenadas = OrdenarLinhas(_grupo.Linhas);
+
+                foreach (var linha in linhasOrdenadas)
+                {
+                    AdicionarLinhaDataTable(dt, linha);
+                }
+
+                oGrid.Clear();
+                oGrid.LoadFromDataSource();
+
+                // Só aplicar estilo se houver linhas
+                if (oGrid.RowCount > 0)
+                {
+                    AplicarEstiloMatrix();
+                }
+
+                // Recalcular totais após carregar os dados
+                RecalcularTotais();
+                AtualizarStatus();
+                AtualizarBotoes();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Erro em CarregarMatrix: {ex.Message}");
+            }
+        }
+
+        private List<LinhaImportacao> OrdenarLinhas(List<LinhaImportacao> linhas)
+        {
+            if (linhas == null || linhas.Count == 0)
+                return new List<LinhaImportacao>();
+
+            return linhas.OrderBy(l => ObterOrdemStatus(l.Status))
+                        .ThenBy(l => l.NumeroLinha)
+                        .ToList();
+        }
+
+        private int ObterOrdemStatus(StatusLinha status)
+        {
+            switch (status)
+            {
+                case StatusLinha.Pendente: return 1;
+                case StatusLinha.Erro: return 2;
+                case StatusLinha.Sucesso: return 3;
+                default: return 4;
+            }
+        }
+
+        private void AdicionarLinhaDataTable(DataTable dt, LinhaImportacao linha)
+        {
+            dt.Rows.Add();
+            int i = dt.Rows.Count - 1;
+
+            dt.SetValue("Linha", i, linha.NumeroLinha);
+            // Por padrão, marcar como "Y" apenas se estiver pendente
+            dt.SetValue("Proc", i, linha.Status == StatusLinha.Pendente ? "Y" : "N");
+            dt.SetValue("Filial", i, linha.Filial);
+            dt.SetValue("CodCli", i, linha.CodigoCliente);
+            dt.SetValue("Cliente", i, Truncar(linha.NomeCliente, 200));
+            dt.SetValue("CodItem", i, linha.CodigoItem);
+            dt.SetValue("Descricao", i, Truncar(linha.DescricaoItem, 200));
+            dt.SetValue("Utiliz", i, linha.Utilizacao ?? "");
+            dt.SetValue("DocEntry", i, linha.DocEntry ?? 0);
+            dt.SetValue("DocNum", i, linha.DocNum ?? 0);
+            dt.SetValue("Status", i, ObterTextoStatus(linha.Status));
+            dt.SetValue("CodImp", i, linha.CodigoImposto ?? "");
+            dt.SetValue("CodSeq", i, linha.CodSeq ?? "");
+            dt.SetValue("Condicao", i, linha.CondicaoPagamento ?? "");
+            dt.SetValue("ObsNF", i, Truncar(linha.ObservacaoNF, 254));
+            dt.SetValue("TipoTrib", i, linha.TipoTributacao ?? "");
+            dt.SetValue("Valor", i, Convert.ToDouble(linha.Valor));
+            dt.SetValue("Mensagem", i, Truncar(linha.MensagemErro, 254));
+            dt.SetValue("Code", i, linha.Code);
+        }
+
+        private string ObterTextoStatus(StatusLinha status)
+        {
+            switch (status)
+            {
+                case StatusLinha.Sucesso: return "✓ Sucesso";
+                case StatusLinha.Erro: return "✗ Erro";
+                default: return "○ Pendente";
+            }
+        }
+
+        #endregion
+
+        #region Processamento
+
+        private void IniciarProcessamento()
+        {
+            try
+            {
+                if (_grupo == null || _grupo.Linhas == null)
+                {
+                    MostrarMensagem("Não há dados para processar.");
+                    return;
+                }
+
+                _processamentoEmAndamento = true;
+                AtualizarBotoes();
+
+                var linhasParaProcessar = ObterLinhasSelecionadas();
+
+                if (linhasParaProcessar.Count == 0)
+                {
+                    MostrarMensagem("Não há documentos selecionados para processar.");
+                    _processamentoEmAndamento = false;
+                    AtualizarInterface();
+                    return;
+                }
+
+                Task.Run(async () =>
+                {
+                    await ProcessarLinhasAsync(linhasParaProcessar);
+                });
+            }
+            catch (Exception ex)
+            {
+                MostrarErro($"Erro ao iniciar processamento: {ex.Message}");
+                _processamentoEmAndamento = false;
+                AtualizarInterface();
+            }
+        }
+
+        private async Task ProcessarLinhasAsync(List<LinhaImportacao> linhas)
+        {
+            if (_grupo == null) return;
+
+            var progress = ProgressBarHelper.Instance;
+
+            try
+            {
+                // Configuração
+                progress.Criar($"Processando {linhas.Count} documentos...", 100);
+
+                // Validação
+                progress.Atualizar(10, "Validando dados...");
+                var validacao = _processamentoController.ValidarDadosSAP(linhas);
+
+                if (!validacao.Valida)
+                {
+                    progress.Fechar();
+                    MostrarMensagem($"Erros encontrados:\n{string.Join("\n", validacao.Erros.Take(5))}");
+                    return;
+                }
+
+                // Conexão
+                progress.Atualizar(20, "Conectando ao Service Layer...");
+                if (!await _serviceLayerClient.ConnectAsync(_cancellationTokenSource.Token))
+                {
+                    throw new Exception("Falha ao conectar com Service Layer");
+                }
+
+                // Processamento em lotes
+                int total = linhas.Count;
+                int processadas = 0;
+                int sucessos = 0;
+                int erros = 0;
+
+                const int LOTE_SIZE = 25;
+
+                for (int i = 0; i < total; i += LOTE_SIZE)
+                {
+                    var lote = linhas.Skip(i).Take(LOTE_SIZE).ToList();
+                    int progresso = 20 + (int)((processadas / (double)total) * 70);
+
+                    progress.Atualizar(progresso, $"Processando {processadas + 1} a {i + lote.Count} de {total}...");
+
+                    var resultados = await Task.Run(() =>
+                        _processamentoController.ProcessarLinhas(
+                            _grupo.Code, lote, _grupo.DataLancamento, _grupo.DataDocumento
+                        )
+                    );
+
+                    AtualizarResultados(resultados);
+
+                    sucessos += resultados.Count(r => r.Sucesso);
+                    erros += resultados.Count(r => !r.Sucesso);
+                    processadas += lote.Count;
+
+                    await Task.Delay(100);
+                }
+
+                // Finalização
+                progress.Atualizar(100, "Concluído!");
+                Thread.Sleep(500);
+                progress.Fechar();
+
+                MostrarMensagem($"Processamento concluído!\n\n✅ Sucessos: {sucessos}\n❌ Erros: {erros}");
+            }
+            catch (Exception ex)
+            {
+                progress.Fechar();
+                MostrarErro($"Erro no processamento: {ex.Message}");
+            }
+            finally
+            {
+                _processamentoEmAndamento = false;
+                CarregarDados();
+            }
+        }
+
+        private void AtualizarResultados(List<ResultadoProcessamento> resultados)
+        {
+            try
+            {
+                if (_grupo == null || _grupo.Linhas == null) return;
+
+                var dt = GetDataTable();
+                if (dt == null || resultados == null || resultados.Count == 0) return;
+
+                foreach (var resultado in resultados)
+                {
+                    for (int i = 0; i < dt.Rows.Count; i++)
+                    {
+                        if (dt.GetValue("Code", i).ToString() == resultado.CodigoLinha)
+                        {
+                            dt.SetValue("Status", i, ObterTextoStatus(resultado.Sucesso ? StatusLinha.Sucesso : StatusLinha.Erro));
+                            dt.SetValue("Mensagem", i, Truncar(resultado.Mensagem, 254));
+                            dt.SetValue("Proc", i, "N");
+
+                            if (resultado.DocEntry.HasValue)
+                            {
+                                dt.SetValue("DocEntry", i, resultado.DocEntry.Value);
+                                dt.SetValue("DocNum", i, resultado.DocNum ?? resultado.DocEntry.Value);
+                            }
+
+                            // Atualizar objeto
+                            var linha = _grupo.Linhas.FirstOrDefault(l => l.Code == resultado.CodigoLinha);
+                            if (linha != null)
+                            {
+                                linha.Status = resultado.Sucesso ? StatusLinha.Sucesso : StatusLinha.Erro;
+                                linha.MensagemErro = resultado.Mensagem;
+                                linha.DocEntry = resultado.DocEntry;
+                                linha.DocNum = resultado.DocNum;
+                            }
+                            break;
+                        }
+                    }
+                }
+
+                oGrid.LoadFromDataSource();
+
+                // Só aplicar estilo se houver linhas
+                if (oGrid.RowCount > 0)
+                {
+                    AplicarEstiloMatrix();
+                }
+
+                AtualizarInterface();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Erro em AtualizarResultados: {ex.Message}");
+            }
+        }
+
+        #endregion
+
+        #region Interface
+
+        private void AtualizarInterface()
+        {
+            RecalcularTotais();
+            AtualizarStatus();
+            AtualizarBotoes();
+        }
+
+        private void RecalcularTotais()
+        {
+            try
+            {
+                _totalSelecionadas = 0;
+                _valorTotalSelecionado = 0;
+
+                if (_grupo == null || _grupo.Linhas == null) return;
+
+                var dt = GetDataTable();
+                if (dt == null || dt.Rows.Count == 0) return;
+
+                for (int i = 0; i < dt.Rows.Count; i++)
+                {
+                    string procValue = dt.GetValue("Proc", i)?.ToString() ?? "N";
+
+                    if (procValue == "Y")
+                    {
+                        var code = dt.GetValue("Code", i)?.ToString();
+                        if (!string.IsNullOrEmpty(code))
+                        {
+                            var linha = _grupo.Linhas.FirstOrDefault(l => l.Code == code);
+
+                            if (linha != null && linha.Status == StatusLinha.Pendente)
+                            {
+                                _totalSelecionadas++;
+                                _valorTotalSelecionado += linha.Valor;
+                            }
+                        }
+                    }
+                }
+
+                System.Diagnostics.Debug.WriteLine($"Totais recalculados: {_totalSelecionadas} selecionadas, valor: {_valorTotalSelecionado:C}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Erro em RecalcularTotais: {ex.Message}");
+            }
+        }
+
+        private void AtualizarStatus()
+        {
+            try
+            {
+                if (txtStatus == null || txtStatus.Item == null || _grupo == null) return;
+
+                var stats = ObterEstatisticas();
+                string status = $"Status: {stats.Item1} documentos | ✓ {stats.Item2} | ✕ {stats.Item3} | ⚠ {stats.Item4}";
+
+                if (_totalSelecionadas > 0)
+                {
+                    status += $" | 📌 {_totalSelecionadas} selecionadas ({_valorTotalSelecionado:C})";
+                }
+
+                // Forçar atualização do campo
+                txtStatus.Item.Update();
+                txtStatus.Value = status;
+
+                System.Diagnostics.Debug.WriteLine($"Status atualizado: {status}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Erro em AtualizarStatus: {ex.Message}");
+            }
+        }
+
+        private void AtualizarBotoes()
+        {
+            try
+            {
+                if (btnProc == null || btnProc.Item == null) return;
+
+                // Habilitar botão processar apenas se há seleções e não está processando
+                btnProc.Item.Enabled = _totalSelecionadas > 0 && !_processamentoEmAndamento;
+
+                // Verificar se há erros
+                bool temErros = false;
+                if (_grupo != null && _grupo.Linhas != null)
+                {
+                    temErros = _grupo.Linhas.Any(l => l.Status == StatusLinha.Erro);
+                }
+
+                if (btnExpErr != null && btnExpErr.Item != null)
+                {
+                    btnExpErr.Item.Enabled = temErros;
+                }
+
+                System.Diagnostics.Debug.WriteLine($"Botões atualizados - Processar: {btnProc.Item.Enabled}, Exportar: {temErros}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Erro em AtualizarBotoes: {ex.Message}");
+            }
+        }
+
+        private Tuple<int, int, int, int> ObterEstatisticas()
+        {
+            if (_grupo == null || _grupo.Linhas == null)
+                return Tuple.Create(0, 0, 0, 0);
+
+            int total = _grupo.Linhas.Count;
+            int sucessos = _grupo.Linhas.Count(l => l.Status == StatusLinha.Sucesso);
+            int erros = _grupo.Linhas.Count(l => l.Status == StatusLinha.Erro);
+            int pendentes = _grupo.Linhas.Count(l => l.Status == StatusLinha.Pendente);
+
+            return Tuple.Create(total, sucessos, erros, pendentes);
+        }
+
+        private void AplicarEstiloMatrix()
+        {
+            try
+            {
+                if (oGrid == null || oGrid.RowCount == 0) return;
+                if (_grupo == null || _grupo.Linhas == null) return;
+
+                var dt = GetDataTable();
+                if (dt == null) return;
+
+                // Aplicar estilos linha por linha
+                for (int i = 1; i <= oGrid.RowCount; i++)
+                {
+                    try
+                    {
+                        int dtIndex = i - 1;
+                        if (dtIndex >= dt.Rows.Count) continue;
+
+                        var code = dt.GetValue("Code", dtIndex)?.ToString();
+                        if (!string.IsNullOrEmpty(code))
+                        {
+                            var linha = _grupo.Linhas.FirstOrDefault(l => l.Code == code);
+
+                            if (linha != null)
+                            {
+                                // Desabilitar visualmente checkboxes de linhas já processadas
+                                if (linha.Status != StatusLinha.Pendente)
+                                {
+                                    oGrid.CommonSetting.SetCellBackColor(i, 1, Color.LightGray.ToArgb());
+                                }
+
+                                // Cor de status
+                                if (CORES_STATUS.ContainsKey(linha.Status))
+                                {
+                                    oGrid.CommonSetting.SetCellBackColor(i, 10, CORES_STATUS[linha.Status]);
+                                }
+                            }
+                        }
+
+                        // Zebra
+                        oGrid.CommonSetting.SetRowBackColor(i, (i - 1) % 2 == 0 ? Color.White.ToArgb() : Color.FromArgb(245, 247, 250).ToArgb());
+                    }
+                    catch { /* Ignorar erro de linha individual */ }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Erro em AplicarEstiloMatrix: {ex.Message}");
+            }
+        }
+
+        #endregion
+
+        #region Eventos
+
+        private void Matrix_ClickAfter(object sboObject, SBOItemEventArg pVal)
+        {
+            ExecutarComFreeze(() =>
+            {
+                try
+                {
+                    // Selecionar a linha clicada
+                    if (pVal.Row > 0 && pVal.Row <= oGrid.RowCount)
+                    {
+                        oGrid.SelectRow(pVal.Row, true, false);
+                    }
+
+                    // Se clicou na coluna Proc, fazer o toggle
+                    if (pVal.ColUID == "Proc" && pVal.Row > 0)
+                    {
+                        if (_grupo == null || _grupo.Linhas == null) return;
+
+                        var dt = GetDataTable();
+                        if (dt == null) return;
+
+                        int index = pVal.Row - 1;
+                        if (index < 0 || index >= dt.Rows.Count) return;
+
+                        var code = dt.GetValue("Code", index).ToString();
+                        var linha = _grupo.Linhas.FirstOrDefault(l => l.Code == code);
+
+                        // Se a linha está pendente, pode alternar
+                        if (linha != null && linha.Status == StatusLinha.Pendente)
+                        {
+                            // Toggle do valor
+                            string valorAtual = dt.GetValue("Proc", index).ToString();
+                            string novoValor = valorAtual == "Y" ? "N" : "Y";
+                            dt.SetValue("Proc", index, novoValor);
+
+                            // Atualizar visualmente a grid
+                            oGrid.LoadFromDataSource();
+
+                            // Recalcular totais e atualizar interface
+                            RecalcularTotais();
+                            AtualizarStatus();
+                            AtualizarBotoes();
+                        }
+                        else if (linha != null)
+                        {
+                            // Se não está pendente, garantir que fica como "N"
+                            dt.SetValue("Proc", index, "N");
+                            oGrid.LoadFromDataSource();
+                            MostrarStatus("⚠️ Documentos já processados não podem ser alterados");
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Erro em Matrix_ClickAfter: {ex.Message}");
+                }
+            });
+        }
+
+        private void CboFiltro_ComboSelectAfter(object sboObject, SBOItemEventArg pVal)
+        {
+            ExecutarComFreeze(() =>
+            {
+                try
+                {
+                    if (_grupo == null || _grupo.Linhas == null) return;
+
+                    string filtro = "TODOS";
+                    if (cboFiltro.Selected != null)
+                        filtro = cboFiltro.Selected.Value;
+
+                    List<LinhaImportacao> linhasFiltradas;
+                    switch (filtro)
+                    {
+                        case "SUCESSO":
+                            linhasFiltradas = _grupo.Linhas.Where(l => l.Status == StatusLinha.Sucesso).ToList();
+                            break;
+                        case "ERRO":
+                            linhasFiltradas = _grupo.Linhas.Where(l => l.Status == StatusLinha.Erro).ToList();
+                            break;
+                        case "PENDENTE":
+                            linhasFiltradas = _grupo.Linhas.Where(l => l.Status == StatusLinha.Pendente).ToList();
+                            break;
+                        default:
+                            linhasFiltradas = _grupo.Linhas;
+                            break;
+                    }
+
+                    var dt = GetDataTable();
+                    if (dt == null) return;
+
+                    dt.Rows.Clear();
+
+                    foreach (var linha in OrdenarLinhas(linhasFiltradas))
+                    {
+                        AdicionarLinhaDataTable(dt, linha);
+                    }
+
+                    oGrid.Clear();
+                    oGrid.LoadFromDataSource();
+
+                    // Só aplicar estilo se houver linhas
+                    if (oGrid.RowCount > 0)
+                    {
+                        AplicarEstiloMatrix();
+                    }
+
+                    AtualizarInterface();
+
+                    MostrarStatus($"Filtro aplicado: {linhasFiltradas.Count} registro(s)");
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Erro em CboFiltro_ComboSelectAfter: {ex.Message}");
+                }
+            });
+        }
+
+        private void BtnProcessar_ClickBefore(object sboObject, SBOItemEventArg pVal, out bool BubbleEvent)
+        {
+            BubbleEvent = true;
+
+            if (_processamentoEmAndamento || _totalSelecionadas == 0)
+            {
+                if (_totalSelecionadas == 0)
+                    MostrarMensagem("Não há documentos selecionados para processar.");
+                return;
+            }
+
+            if (ConfirmarAcao($"Confirma o processamento de {_totalSelecionadas} documento(s)?\n\nValor total: {_valorTotalSelecionado:C}"))
+            {
+                IniciarProcessamento();
+            }
+        }
+
+        private void BtnExportarErros_ClickBefore(object sboObject, SBOItemEventArg pVal, out bool BubbleEvent)
+        {
+            BubbleEvent = true;
+            ExportarErros();
+        }
+
+        private void BtnVoltar_ClickBefore(object sboObject, SBOItemEventArg pVal, out bool BubbleEvent)
+        {
+            BubbleEvent = true;
+
+            if (!string.IsNullOrEmpty(_formOriginId))
+                FormManager.TrazerParaFrente(_formOriginId);
+
+            UIAPIRawForm.Close();
+        }
+
+        private void BtnFechar_ClickBefore(object sboObject, SBOItemEventArg pVal, out bool BubbleEvent)
+        {
+            BubbleEvent = true;
+            UIAPIRawForm.Close();
+        }
+
+        #endregion
+
+        #region Form Events
+
+        public override void OnInitializeFormEvents()
+        {
+            LoadAfter += Form_LoadAfter;
+            CloseBefore += Form_CloseBefore;
+            ResizeAfter += Form_ResizeAfter;
+        }
+
+        private void Form_LoadAfter(SBOItemEventArg pVal)
+        {
+            UIAPIRawForm.Title = "Processamento de NFS-e em Lote - Resultado";
+            FormManager.RegistrarFormulario(UIAPIRawForm.UniqueID, "Resultado Processamento", false, null, _grupo?.Code, 4);
+
+            // Aguardar a Matrix carregar completamente antes de ajustar larguras
+            Task.Run(async () =>
+            {
+                await Task.Delay(100);
+
+                try
+                {
+                    if (oGrid != null && oGrid.RowCount > 0)
+                    {
+                        AjustarLarguraColunas();
+                    }
+                }
+                catch { }
+            });
+        }
+
+        private void Form_CloseBefore(SBOItemEventArg pVal, out bool BubbleEvent)
+        {
+            BubbleEvent = true;
+
+            if (_cancellationTokenSource != null)
+            {
+                _cancellationTokenSource.Cancel();
+                _cancellationTokenSource.Dispose();
+            }
+
+            if (_serviceLayerClient != null)
+            {
+                _serviceLayerClient.DisconnectAsync(CancellationToken.None).Wait(1000);
+            }
+
+            FormManager.RemoverFormulario(UIAPIRawForm.UniqueID);
+        }
+
+        private void Form_ResizeAfter(SBOItemEventArg pVal)
+        {
+            AjustarLarguraColunas();
+        }
+
+        private void AjustarLarguraColunas()
+        {
+            try
+            {
+                if (oGrid == null || oGrid.RowCount == 0) return;
+
+                var larguras = new Dictionary<string, int>
+                {
+                    ["#"] = 30,
+                    ["Proc"] = 60,
+                    ["Filial"] = 50,
+                    ["CodCli"] = 80,
+                    ["Cliente"] = 200,
+                    ["CodItem"] = 80,
+                    ["Descricao"] = 200,
+                    ["Utiliz"] = 50,
+                    ["DocEntry"] = 60,
+                    ["DocNum"] = 60,
+                    ["Status"] = 80,
+                    ["CodImp"] = 70,
+                    ["CodSeq"] = 60,
+                    ["Condicao"] = 70,
+                    ["ObsNF"] = 150,
+                    ["TipoTrib"] = 60,
+                    ["Valor"] = 80,
+                    ["Mensagem"] = 300
+                };
+
+                foreach (var kvp in larguras)
+                {
+                    try
+                    {
+                        oGrid.Columns.Item(kvp.Key).Width = kvp.Value;
+                    }
+                    catch { /* Ignorar erro de coluna individual */ }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Erro em AjustarLarguraColunas: {ex.Message}");
+            }
+        }
+
+        #endregion
+
+        #region Métodos Auxiliares
+
+        private void ExportarErros()
+        {
+            if (_grupo == null || _grupo.Linhas == null)
+            {
+                MostrarMensagem("Não há dados para exportar.");
+                return;
+            }
+
+            var erros = _grupo.Linhas.Where(l => l.Status == StatusLinha.Erro).ToList();
+
+            if (erros.Count == 0)
+            {
+                MostrarMensagem("Não há erros para exportar.");
+                return;
+            }
+
+            try
+            {
+                string caminhoArquivo = string.Empty;
+
+                // Executar em thread STA para o diálogo funcionar corretamente
+                Thread thread = new Thread(() =>
+                {
+                    using (System.Windows.Forms.SaveFileDialog saveDialog = new System.Windows.Forms.SaveFileDialog())
+                    {
+                        // Configurar o diálogo
+                        saveDialog.Filter = "Arquivo Excel (*.xlsx)|*.xlsx|Todos os arquivos (*.*)|*.*";
+                        saveDialog.Title = "Salvar relatório de erros NFS-e";
+                        saveDialog.DefaultExt = "xlsx";
+                        saveDialog.AddExtension = true;
+                        saveDialog.OverwritePrompt = true;
+
+                        // Sugerir nome do arquivo
+                        string nomeArquivo = $"Erros_NFS_{_grupo.Nome}_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
+                        saveDialog.FileName = nomeArquivo;
+
+                        // Definir diretório inicial
+                        saveDialog.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+
+                        if (saveDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                        {
+                            caminhoArquivo = saveDialog.FileName;
+                        }
+                    }
+                });
+
+                thread.SetApartmentState(ApartmentState.STA);
+                thread.Start();
+                thread.Join();
+
+                // Se o usuário cancelou, sair
+                if (string.IsNullOrEmpty(caminhoArquivo))
+                    return;
+
+                // Exportar para o caminho escolhido
+                var exportService = new ExcelExportService();
+                string arquivo = exportService.ExportarErros(_grupo, erros, caminhoArquivo);
+
+                MostrarMensagem($"Exportação concluída!\n\n📁 {arquivo}\n📊 {erros.Count} erro(s) exportado(s)");
+
+                // Abrir o explorador de arquivos mostrando o arquivo
+                System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{arquivo}\"");
+            }
+            catch (Exception ex)
+            {
+                MostrarErro($"Erro ao exportar: {ex.Message}");
+            }
+        }
+
+        private List<LinhaImportacao> ObterLinhasSelecionadas()
+        {
+            var selecionadas = new List<LinhaImportacao>();
+
+            if (_grupo == null || _grupo.Linhas == null) return selecionadas;
+
+            var dt = GetDataTable();
+            if (dt == null) return selecionadas;
+
+            for (int i = 0; i < dt.Rows.Count; i++)
+            {
+                if (dt.GetValue("Proc", i).ToString() == "Y")
+                {
+                    var code = dt.GetValue("Code", i).ToString();
+                    var linha = _grupo.Linhas.FirstOrDefault(l => l.Code == code);
+
+                    if (linha != null && linha.Status == StatusLinha.Pendente)
+                        selecionadas.Add(linha);
+                }
+            }
+
+            return selecionadas;
+        }
+
+        private DataTable GetDataTable()
+        {
+            try
+            {
+                if (UIAPIRawForm == null || UIAPIRawForm.DataSources == null || UIAPIRawForm.DataSources.DataTables == null)
+                    return null;
+
+                return UIAPIRawForm.DataSources.DataTables.Item("dtResult");
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private void ExecutarComFreeze(Action acao)
+        {
+            if (UIAPIRawForm == null) return;
+
+            try
+            {
+                UIAPIRawForm.Freeze(true);
+                acao();
+            }
+            finally
+            {
+                UIAPIRawForm.Freeze(false);
+            }
+        }
+
+        private string Truncar(string texto, int max)
+        {
+            if (string.IsNullOrEmpty(texto)) return "";
+            return texto.Length <= max ? texto : texto.Substring(0, max - 3) + "...";
+        }
+
+        private void MostrarMensagem(string mensagem)
+        {
+            Application.SBO_Application.MessageBox(mensagem, 1, "Ok");
+        }
+
+        private void MostrarErro(string erro)
+        {
+            Application.SBO_Application.SetStatusBarMessage(erro, BoMessageTime.bmt_Short, true);
+        }
+
+        private void MostrarStatus(string status)
+        {
+            Application.SBO_Application.SetStatusBarMessage(status, BoMessageTime.bmt_Short, false);
+        }
+
+        private bool ConfirmarAcao(string mensagem)
+        {
+            return Application.SBO_Application.MessageBox(mensagem, 2, "Sim", "Não") == 1;
+        }
+
+        private void SelecionarTodasPendentes(bool selecionar)
+        {
+            ExecutarComFreeze(() =>
+            {
+                try
+                {
+                    if (_grupo == null || _grupo.Linhas == null) return;
+
+                    var dt = GetDataTable();
+                    if (dt == null) return;
+
+                    for (int i = 0; i < dt.Rows.Count; i++)
+                    {
+                        var code = dt.GetValue("Code", i).ToString();
+                        var linha = _grupo.Linhas.FirstOrDefault(l => l.Code == code);
+
+                        if (linha != null && linha.Status == StatusLinha.Pendente)
+                        {
+                            dt.SetValue("Proc", i, selecionar ? "Y" : "N");
+                        }
+                    }
+
+                    oGrid.LoadFromDataSource();
+                    RecalcularTotais();
+                    AtualizarStatus();
+                    AtualizarBotoes();
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Erro em SelecionarTodasPendentes: {ex.Message}");
+                }
+            });
+        }
+
+        #endregion
+    }
+}
