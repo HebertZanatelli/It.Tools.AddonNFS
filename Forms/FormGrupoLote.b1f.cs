@@ -27,6 +27,7 @@ namespace ItTech.Tool.AddonNFS.Forms
         private bool _arquivoValidado = false;
         private string _formOrigemUID;
         private bool _dadosCarregados = false;
+        private bool _carregandoDados = false;
         private readonly object _lockCarregamento = new object();
 
         // Controles do formulário
@@ -213,6 +214,11 @@ namespace ItTech.Tool.AddonNFS.Forms
         {
             try
             {
+                // Evitar múltiplos carregamentos simultâneos
+                if (_carregandoDados)
+                    return;
+                    
+                _carregandoDados = true;
                 UIAPIRawForm.Freeze(true);
                 AtualizarStatus("Carregando dados do grupo...", false);
 
@@ -254,6 +260,7 @@ namespace ItTech.Tool.AddonNFS.Forms
             }
             finally
             {
+                _carregandoDados = false;
                 UIAPIRawForm.Freeze(false);
                 AtualizarInterfaceContextual();
             }
@@ -402,6 +409,17 @@ namespace ItTech.Tool.AddonNFS.Forms
                     return;
                 }
 
+                // Limpar status anterior
+                _arquivoValidado = false;
+                
+                // Atualizar status na matrix
+                var dt = UIAPIRawForm.DataSources.DataTables.Item("dtArquivo");
+                if (dt.Rows.Count > 0)
+                {
+                    dt.SetValue("Status", 0, "Validando...");
+                    MatrixArquivo.LoadFromDataSource();
+                }
+
                 UIAPIRawForm.Freeze(true);
                 AtualizarStatus("Validando arquivo...", false);
 
@@ -410,6 +428,7 @@ namespace ItTech.Tool.AddonNFS.Forms
             }
             catch (Exception ex)
             {
+                _arquivoValidado = false;
                 Application.SBO_Application.MessageBox($"Erro ao validar: {ex.Message}", 1, "Ok", "", "");
             }
             finally
@@ -753,14 +772,16 @@ namespace ItTech.Tool.AddonNFS.Forms
                     FormManager.CachearGrupo(_grupoCode, _grupoAtual);
                 }
 
-                // Abrir formulário de visualização de linhas (Etapa 2)
+                // Criar o formulário antes de configurar
                 FormVisualizacaoLinhas formLinhas = new FormVisualizacaoLinhas();
-
+                
+                // Configurar o código do grupo ANTES de mostrar
                 formLinhas.SetCodeGroup(_grupoCode);
+                
+                // Agora sim, mostrar o formulário
                 formLinhas.Show();
 
-
-
+                // Fechar este formulário
                 UIAPIRawForm.Close();
             }
             catch (Exception ex)
@@ -778,17 +799,39 @@ namespace ItTech.Tool.AddonNFS.Forms
 
                 try
                 {
-                    using (System.Windows.Forms.OpenFileDialog ofd = new System.Windows.Forms.OpenFileDialog())
+                    // Criar dummy form para garantir que o diálogo apareça no SAP B1
+                    using (System.Windows.Forms.Form dummyForm = new System.Windows.Forms.Form())
                     {
-                        ofd.Filter = "Arquivos Excel (*.xlsx)|*.xlsx|Todos os arquivos (*.*)|*.*";
-                        ofd.Title = "Selecione o arquivo Excel com os dados das NFS-e";
-                        ofd.Multiselect = false;
-                        ofd.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-
-                        if (ofd.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                        // Configurar dummy form para ser invisível mas funcional
+                        dummyForm.TopMost = true;
+                        dummyForm.WindowState = System.Windows.Forms.FormWindowState.Minimized;
+                        dummyForm.ShowInTaskbar = false;
+                        dummyForm.FormBorderStyle = System.Windows.Forms.FormBorderStyle.None;
+                        dummyForm.Size = new System.Drawing.Size(1, 1);
+                        dummyForm.StartPosition = System.Windows.Forms.FormStartPosition.Manual;
+                        dummyForm.Location = new System.Drawing.Point(-1000, -1000);
+                        dummyForm.Opacity = 0;
+                        
+                        // IMPORTANTE: Mostrar o form para criar handle válido
+                        dummyForm.Show();
+                        dummyForm.BringToFront();
+                        
+                        using (System.Windows.Forms.OpenFileDialog ofd = new System.Windows.Forms.OpenFileDialog())
                         {
-                            arquivo = ofd.FileName;
+                            ofd.Filter = "Arquivos Excel (*.xlsx)|*.xlsx|Todos os arquivos (*.*)|*.*";
+                            ofd.Title = "Selecione o arquivo Excel com os dados das NFS-e";
+                            ofd.Multiselect = false;
+                            ofd.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+
+                            // Usar o dummy form como parent
+                            if (ofd.ShowDialog(dummyForm) == System.Windows.Forms.DialogResult.OK)
+                            {
+                                arquivo = ofd.FileName;
+                            }
                         }
+                        
+                        // Fechar dummy form
+                        dummyForm.Close();
                     }
 
                     // Processar resultado na mesma thread
@@ -806,6 +849,7 @@ namespace ItTech.Tool.AddonNFS.Forms
                 catch (Exception ex)
                 {
                     // Log erro se necessário 
+                    System.Diagnostics.Debug.WriteLine($"Erro no diálogo: {ex.Message}");
                     ReabilitarBotaoAbrir();
                 }
             });
@@ -819,29 +863,40 @@ namespace ItTech.Tool.AddonNFS.Forms
         // NOVO MÉTODO
         private void ProcessarArquivoSelecionado(string arquivo)
         {
-            try
+            // Executar de forma assíncrona na thread principal
+            Task.Run(() =>
             {
-                if (!ValidarArquivoExcel(arquivo))
+                try
+                {
+                    // Voltar para thread principal do SAP
+                    Application.SBO_Application.Forms.ActiveForm.Freeze(true);
+                    
+                    if (!ValidarArquivoExcel(arquivo))
+                    {
+                        ReabilitarBotaoAbrir();
+                        Application.SBO_Application.Forms.ActiveForm.Freeze(false);
+                        return;
+                    }
+
+                    ExibirArquivoNaMatrix(Path.GetFileName(arquivo), arquivo);
+                    _caminhoArquivoTemp = arquivo;
+                    _arquivoValidado = false;
+
+                    AtualizarStatus("Arquivo selecionado. Clique em 'Validar Arquivo' para continuar.", false);
+                    AtualizarInterfaceContextual();
+                    
+                    Application.SBO_Application.Forms.ActiveForm.Freeze(false);
+                }
+                catch (Exception ex)
+                {
+                    Application.SBO_Application.Forms.ActiveForm.Freeze(false);
+                    Application.SBO_Application.MessageBox($"Erro ao processar arquivo: {ex.Message}", 1, "Ok", "", "");
+                }
+                finally
                 {
                     ReabilitarBotaoAbrir();
-                    return;
                 }
-
-                ExibirArquivoNaMatrix(Path.GetFileName(arquivo), arquivo);
-                _caminhoArquivoTemp = arquivo;
-                _arquivoValidado = false;
-
-                AtualizarStatus("Arquivo selecionado. Clique em 'Validar Arquivo' para continuar.", false);
-                AtualizarInterfaceContextual();
-            }
-            catch (Exception ex)
-            {
-                Application.SBO_Application.MessageBox($"Erro ao processar arquivo: {ex.Message}", 1, "Ok", "", "");
-            }
-            finally
-            {
-                ReabilitarBotaoAbrir();
-            }
+            });
         }
 
         // NOVO MÉTODO
@@ -909,6 +964,17 @@ namespace ItTech.Tool.AddonNFS.Forms
 
             try
             {
+                // Limpar cache se necessário
+                if (!string.IsNullOrEmpty(_grupoCode))
+                {
+                    FormManager.RemoverGrupoCache(_grupoCode);
+                }
+                
+                // Limpar recursos
+                _grupoController = null;
+                _importController = null;
+                _grupoAtual = null;
+                
                 // Remover do FormManager
                 FormManager.RemoverFormulario(UIAPIRawForm.UniqueID);
             }
