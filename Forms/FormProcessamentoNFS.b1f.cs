@@ -42,12 +42,12 @@ namespace ItTech.Tool.AddonNFS.Forms
         private Dictionary<string, StatusLinha> _ultimoStatusCache = new Dictionary<string, StatusLinha>();
         private bool _zebraStripeAplicado = false;
 
-        // Cores de status
+        // Cores de status - Baseadas em pesquisa UX/UI
         private readonly Dictionary<StatusLinha, int> CORES_STATUS = new Dictionary<StatusLinha, int>
         {
-            { StatusLinha.Sucesso, 11854805 },   // Verde suave (RGB: 213,245,180)
-            { StatusLinha.Erro, 16775408 },      // Rosa bebê suave (RGB: 255,240,245) - #FFF0F5
-            { StatusLinha.Pendente, 11393254 }   // Azul suave (RGB: 173,216,230) - Azul bebê
+            { StatusLinha.Sucesso, 10027160 },   // Verde Menta Suave (RGB: 152,251,152) #98FB98
+            { StatusLinha.Erro, 16767673 },      // Rosa Pêssego (RGB: 255,218,185) #FFDAB9
+            { StatusLinha.Pendente, 11591910 }   // Azul Céu Suave (RGB: 176,224,230) #B0E0E6
         };
 
         #endregion
@@ -283,23 +283,53 @@ namespace ItTech.Tool.AddonNFS.Forms
                 }
 
                 var linhasOrdenadas = OrdenarLinhas(_grupo.Linhas);
-
-                foreach (var linha in linhasOrdenadas)
+                
+                // Adicionar todas as linhas de uma vez para melhor performance
+                int totalLinhas = linhasOrdenadas.Count;
+                bool mostrarProgresso = totalLinhas > 100;
+                
+                if (mostrarProgresso)
                 {
-                    AdicionarLinhaDataTable(dt, linha);
+                    Application.SBO_Application.StatusBar.SetText($"Preparando {totalLinhas} registros...", 
+                        BoMessageTime.bmt_Short, BoStatusBarMessageType.smt_Warning);
                 }
 
+                // Adicionar linhas em lotes para melhor performance
+                const int BATCH_SIZE = 50;
+                for (int batch = 0; batch < totalLinhas; batch += BATCH_SIZE)
+                {
+                    var lote = linhasOrdenadas.Skip(batch).Take(BATCH_SIZE);
+                    foreach (var linha in lote)
+                    {
+                        AdicionarLinhaDataTable(dt, linha);
+                    }
+                    
+                    // Atualizar progresso apenas em lotes grandes
+                    if (mostrarProgresso && batch % 100 == 0)
+                    {
+                        Application.SBO_Application.StatusBar.SetText(
+                            $"Carregando... {batch}/{totalLinhas} registros", 
+                            BoMessageTime.bmt_Short, BoStatusBarMessageType.smt_Warning);
+                    }
+                }
+
+                // Carregar dados no grid de uma vez
                 oGrid.Clear();
                 oGrid.LoadFromDataSource();
                 
-                AplicarEstiloMatrixOtimizado();
+                // Aplicar estilos apenas se necessário
+                if (totalLinhas > 0)
+                {
+                    AplicarEstiloMatrixOtimizado();
+                }
+                
                 // Recalcular totais após carregar os dados
                 RecalcularTotais();
                 AtualizarStatus();
                 AtualizarBotoes();
                 
                 // Indicar conclusão do carregamento
-                Application.SBO_Application.StatusBar.SetText($"Dados carregados com sucesso! {_grupo.Linhas.Count} registros.", 
+                Application.SBO_Application.StatusBar.SetText($"Dados carregados com sucesso! {totalLinhas} registros.", 
                     BoMessageTime.bmt_Short, BoStatusBarMessageType.smt_Success);
             }
             catch (Exception ex)
