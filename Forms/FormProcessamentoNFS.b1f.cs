@@ -37,6 +37,10 @@ namespace ItTech.Tool.AddonNFS.Forms
         // Estatísticas
         private int _totalSelecionadas = 0;
         private decimal _valorTotalSelecionado = 0;
+        
+        // Cache para otimização
+        private Dictionary<string, StatusLinha> _ultimoStatusCache = new Dictionary<string, StatusLinha>();
+        private bool _zebraStripeAplicado = false;
 
         // Cores de status
         private readonly Dictionary<StatusLinha, int> CORES_STATUS = new Dictionary<StatusLinha, int>
@@ -281,13 +285,8 @@ namespace ItTech.Tool.AddonNFS.Forms
 
                 oGrid.Clear();
                 oGrid.LoadFromDataSource();
-
-                // Só aplicar estilo se houver linhas
-                if (oGrid.RowCount > 0)
-                {
-                    AplicarEstiloMatrix();
-                }
-
+                
+                AplicarEstiloMatrixOtimizado();
                 // Recalcular totais após carregar os dados
                 RecalcularTotais();
                 AtualizarStatus();
@@ -515,13 +514,8 @@ namespace ItTech.Tool.AddonNFS.Forms
                 }
 
                 oGrid.LoadFromDataSource();
-
-                // Só aplicar estilo se houver linhas
-                if (oGrid.RowCount > 0)
-                {
-                    AplicarEstiloMatrix();
-                }
-
+                
+                AplicarEstiloMatrixOtimizado(resultados);
                 AtualizarInterface();
             }
             catch (Exception ex)
@@ -649,7 +643,7 @@ namespace ItTech.Tool.AddonNFS.Forms
             return Tuple.Create(total, sucessos, erros, pendentes);
         }
 
-        private void AplicarEstiloMatrix()
+        private void AplicarEstiloMatrixOtimizado(List<ResultadoProcessamento> resultadosRecentes = null)
         {
             try
             {
@@ -659,44 +653,96 @@ namespace ItTech.Tool.AddonNFS.Forms
                 var dt = GetDataTable();
                 if (dt == null) return;
 
-                // Aplicar estilos linha por linha
-                for (int i = 1; i <= oGrid.RowCount; i++)
+                // Criar dicionário para lookup O(1)
+                var linhasPorCode = _grupo.Linhas.ToDictionary(l => l.Code, l => l);
+                
+                // Se temos resultados recentes, processar apenas essas linhas
+                if (resultadosRecentes != null && resultadosRecentes.Count > 0)
                 {
-                    try
+                    var codesAlterados = new HashSet<string>(resultadosRecentes.Select(r => r.CodigoLinha));
+                    
+                    for (int i = 1; i <= oGrid.RowCount; i++)
                     {
                         int dtIndex = i - 1;
                         if (dtIndex >= dt.Rows.Count) continue;
 
                         var code = dt.GetValue("Code", dtIndex)?.ToString();
-                        if (!string.IsNullOrEmpty(code))
+                        if (!string.IsNullOrEmpty(code) && codesAlterados.Contains(code))
                         {
-                            var linha = _grupo.Linhas.FirstOrDefault(l => l.Code == code);
-
-                            if (linha != null)
+                            if (linhasPorCode.TryGetValue(code, out var linha))
                             {
-                                // Desabilitar visualmente checkboxes de linhas já processadas
-                                if (linha.Status != StatusLinha.Pendente)
-                                {
-                                    oGrid.CommonSetting.SetCellBackColor(i, 1, Color.LightGray.ToArgb());
-                                }
-
-                                // Cor de status
-                                if (CORES_STATUS.ContainsKey(linha.Status))
-                                {
-                                    oGrid.CommonSetting.SetCellBackColor(i, 10, CORES_STATUS[linha.Status]);
-                                }
+                                AplicarCorLinha(i, linha);
+                                _ultimoStatusCache[code] = linha.Status;
                             }
                         }
-
-                        // Zebra
-                        oGrid.CommonSetting.SetRowBackColor(i, (i - 1) % 2 == 0 ? Color.White.ToArgb() : Color.FromArgb(245, 247, 250).ToArgb());
                     }
-                    catch { /* Ignorar erro de linha individual */ }
+                }
+                else
+                {
+                    // Primeira vez ou recarregamento completo
+                    _ultimoStatusCache.Clear();
+                    
+                    for (int i = 1; i <= oGrid.RowCount; i++)
+                    {
+                        int dtIndex = i - 1;
+                        if (dtIndex >= dt.Rows.Count) continue;
+
+                        var code = dt.GetValue("Code", dtIndex)?.ToString();
+                        if (!string.IsNullOrEmpty(code) && linhasPorCode.TryGetValue(code, out var linha))
+                        {
+                            AplicarCorLinha(i, linha);
+                            _ultimoStatusCache[code] = linha.Status;
+                        }
+                    }
+                    
+                    // Aplicar zebra stripe apenas uma vez
+                    if (!_zebraStripeAplicado)
+                    {
+                        AplicarZebraStripe();
+                        _zebraStripeAplicado = true;
+                    }
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Erro em AplicarEstiloMatrix: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Erro em AplicarEstiloMatrixOtimizado: {ex.Message}");
+            }
+        }
+        
+        private void AplicarCorLinha(int row, LinhaImportacao linha)
+        {
+            try
+            {
+                // Checkbox - desabilitar visualmente se não pendente
+                if (linha.Status != StatusLinha.Pendente)
+                {
+                    oGrid.CommonSetting.SetCellBackColor(row, 1, Color.LightGray.ToArgb());
+                }
+                
+                // Cor de status
+                if (CORES_STATUS.TryGetValue(linha.Status, out int cor))
+                {
+                    oGrid.CommonSetting.SetCellBackColor(row, 10, cor);
+                }
+            }
+            catch { }
+        }
+        
+        private void AplicarZebraStripe()
+        {
+            try
+            {
+                int corBranca = Color.White.ToArgb();
+                int corCinza = Color.FromArgb(245, 247, 250).ToArgb();
+                
+                for (int i = 1; i <= oGrid.RowCount; i++)
+                {
+                    oGrid.CommonSetting.SetRowBackColor(i, (i - 1) % 2 == 0 ? corBranca : corCinza);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Erro ao aplicar zebra stripe: {ex.Message}");
             }
         }
 
@@ -803,12 +849,7 @@ namespace ItTech.Tool.AddonNFS.Forms
 
                     oGrid.Clear();
                     oGrid.LoadFromDataSource();
-
-                    // Só aplicar estilo se houver linhas
-                    if (oGrid.RowCount > 0)
-                    {
-                        AplicarEstiloMatrix();
-                    }
+                    AplicarEstiloMatrixOtimizado();
 
                     AtualizarInterface();
 
@@ -906,6 +947,10 @@ namespace ItTech.Tool.AddonNFS.Forms
             {
                 _serviceLayerClient.DisconnectAsync(CancellationToken.None).Wait(1000);
             }
+
+            // Limpar cache
+            _ultimoStatusCache?.Clear();
+            _zebraStripeAplicado = false;
 
             FormManager.RemoverFormulario(UIAPIRawForm.UniqueID);
         }
