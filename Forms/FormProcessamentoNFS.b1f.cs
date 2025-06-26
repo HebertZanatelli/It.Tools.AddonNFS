@@ -444,6 +444,9 @@ namespace ItTech.Tool.AddonNFS.Forms
                 int erros = 0;
 
                 const int LOTE_SIZE = 25;
+                const int LIMITE_TEMPO_REAL = 50;
+                var resultadosAcumulados = new List<ResultadoProcessamento>();
+                bool atualizarEmTempoReal = true;
 
                 for (int i = 0; i < total; i += LOTE_SIZE)
                 {
@@ -458,13 +461,43 @@ namespace ItTech.Tool.AddonNFS.Forms
                         )
                     );
 
-                    AtualizarResultados(resultados);
+                    // Lógica de atualização inteligente
+                    if (processadas < LIMITE_TEMPO_REAL)
+                    {
+                        // Primeiros 50: atualiza em tempo real
+                        AtualizarResultados(resultados);
+                        
+                        // Verifica se passou do limite neste lote
+                        if (processadas + lote.Count >= LIMITE_TEMPO_REAL && atualizarEmTempoReal)
+                        {
+                            atualizarEmTempoReal = false;
+                            Application.SBO_Application.StatusBar.SetText(
+                                "Processando lote maior... Interface será atualizada ao final.", 
+                                BoMessageTime.bmt_Short, BoStatusBarMessageType.smt_Warning);
+                        }
+                    }
+                    else
+                    {
+                        // Após 50: apenas acumula
+                        resultadosAcumulados.AddRange(resultados);
+                    }
 
                     sucessos += resultados.Count(r => r.Sucesso);
                     erros += resultados.Count(r => !r.Sucesso);
                     processadas += lote.Count;
 
                     await Task.Delay(100);
+                }
+
+                // Se acumulou resultados, atualiza tudo de uma vez
+                if (resultadosAcumulados.Count > 0)
+                {
+                    progress.Atualizar(95, "Atualizando interface com todos os resultados...");
+                    Application.SBO_Application.StatusBar.SetText(
+                        $"Atualizando {resultadosAcumulados.Count} resultados... Por favor aguarde.", 
+                        BoMessageTime.bmt_Short, BoStatusBarMessageType.smt_Warning);
+                    
+                    AtualizarResultados(resultadosAcumulados);
                 }
 
                 // Finalização
