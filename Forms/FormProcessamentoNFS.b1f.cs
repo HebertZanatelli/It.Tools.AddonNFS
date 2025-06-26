@@ -24,7 +24,8 @@ namespace ItTech.Tool.AddonNFS.Forms
         private ServiceLayerInvoiceClient _serviceLayerClient;
         private bool _processamentoEmAndamento = false;
         private bool _configurado = false;
-        private CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
+        private CancellationTokenSource _cancellationTokenSource;
+        private readonly object _lockTotais = new object();
         private string _formOriginId;
 
         // Controles
@@ -413,6 +414,12 @@ namespace ItTech.Tool.AddonNFS.Forms
                 }
 
                 _processamentoEmAndamento = true;
+                
+                // Cancelar operação anterior se existir
+                _cancellationTokenSource?.Cancel();
+                _cancellationTokenSource?.Dispose();
+                _cancellationTokenSource = new CancellationTokenSource();
+                
                 AtualizarBotoes();
 
                 var linhasParaProcessar = ObterLinhasSelecionadas();
@@ -425,10 +432,27 @@ namespace ItTech.Tool.AddonNFS.Forms
                     return;
                 }
 
-                Task.Run(async () =>
+                // Usar await para garantir tratamento de erros
+                _ = Task.Run(async () =>
                 {
-                    await ProcessarLinhasAsync(linhasParaProcessar);
-                });
+                    try
+                    {
+                        await ProcessarLinhasAsync(linhasParaProcessar);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        MostrarStatus("Processamento cancelado");
+                    }
+                    catch (Exception ex)
+                    {
+                        MostrarErro($"Erro no processamento: {ex.Message}");
+                    }
+                    finally
+                    {
+                        _processamentoEmAndamento = false;
+                        AtualizarInterface();
+                    }
+                }, _cancellationTokenSource.Token);
             }
             catch (Exception ex)
             {
@@ -516,7 +540,15 @@ namespace ItTech.Tool.AddonNFS.Forms
                     erros += resultados.Count(r => !r.Sucesso);
                     processadas += lote.Count;
 
-                    await Task.Delay(100);
+                    // Verificar cancelamento
+                    if (_cancellationTokenSource.Token.IsCancellationRequested)
+                    {
+                        throw new OperationCanceledException();
+                    }
+                    
+                    // Pequeno delay apenas se necessário para não sobrecarregar
+                    if (lote.Count == LOTE_SIZE)
+                        await Task.Delay(50, _cancellationTokenSource.Token);
                 }
 
                 // Se acumulou resultados, atualiza tudo de uma vez
@@ -532,7 +564,6 @@ namespace ItTech.Tool.AddonNFS.Forms
 
                 // Finalização
                 progress.Atualizar(100, "Concluído!");
-                Thread.Sleep(500);
                 progress.Fechar();
 
                 MostrarMensagem($"Processamento concluído!\n\n✅ Sucessos: {sucessos}\n❌ Erros: {erros}");
@@ -646,41 +677,44 @@ namespace ItTech.Tool.AddonNFS.Forms
 
         private void RecalcularTotais()
         {
-            try
+            lock (_lockTotais)
             {
-                _totalSelecionadas = 0;
-                _valorTotalSelecionado = 0;
-
-                if (_grupo == null || _grupo.Linhas == null) return;
-
-                var dt = GetDataTable();
-                if (dt == null || dt.Rows.Count == 0) return;
-
-                for (int i = 0; i < dt.Rows.Count; i++)
+                try
                 {
-                    string procValue = dt.GetValue("Proc", i)?.ToString() ?? "N";
+                    _totalSelecionadas = 0;
+                    _valorTotalSelecionado = 0;
 
-                    if (procValue == "Y")
+                    if (_grupo == null || _grupo.Linhas == null) return;
+
+                    var dt = GetDataTable();
+                    if (dt == null || dt.Rows.Count == 0) return;
+
+                    for (int i = 0; i < dt.Rows.Count; i++)
                     {
-                        var code = dt.GetValue("Code", i)?.ToString();
-                        if (!string.IsNullOrEmpty(code))
-                        {
-                            var linha = _grupo.Linhas.FirstOrDefault(l => l.Code == code);
+                        string procValue = dt.GetValue("Proc", i)?.ToString() ?? "N";
 
-                            if (linha != null && linha.Status == StatusLinha.Pendente)
+                        if (procValue == "Y")
+                        {
+                            var code = dt.GetValue("Code", i)?.ToString();
+                            if (!string.IsNullOrEmpty(code))
                             {
-                                _totalSelecionadas++;
-                                _valorTotalSelecionado += linha.Valor;
+                                var linha = _grupo.Linhas.FirstOrDefault(l => l.Code == code);
+
+                                if (linha != null && linha.Status == StatusLinha.Pendente)
+                                {
+                                    _totalSelecionadas++;
+                                    _valorTotalSelecionado += linha.Valor;
+                                }
                             }
                         }
                     }
-                }
 
-                System.Diagnostics.Debug.WriteLine($"Totais recalculados: {_totalSelecionadas} selecionadas, valor: {_valorTotalSelecionado:C}");
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Erro em RecalcularTotais: {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"Totais recalculados: {_totalSelecionadas} selecionadas, valor: {_valorTotalSelecionado:C}");
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Erro em RecalcularTotais: {ex.Message}");
+                }
             }
         }
 
@@ -1035,34 +1069,49 @@ namespace ItTech.Tool.AddonNFS.Forms
             FormManager.RegistrarFormulario(UIAPIRawForm.UniqueID, "Resultado Processamento", false, null, _grupo?.Code, 4);
 
             // Aguardar a Matrix carregar completamente antes de ajustar larguras
-            Task.Run(async () =>
+            Application.SBO_Application.Forms.ActiveForm.Freeze(true);
+            try
             {
-                await Task.Delay(100);
-
-                try
+                if (oGrid != null)
                 {
-                    if (oGrid != null && oGrid.RowCount > 0)
-                    {
-                        AjustarLarguraColunas();
-                    }
+                    AjustarLarguraColunas();
                 }
-                catch { }
-            });
+            }
+            finally
+            {
+                Application.SBO_Application.Forms.ActiveForm.Freeze(false);
+            }
         }
 
         private void Form_CloseBefore(SBOItemEventArg pVal, out bool BubbleEvent)
         {
             BubbleEvent = true;
 
-            if (_cancellationTokenSource != null)
+            try
             {
-                _cancellationTokenSource.Cancel();
-                _cancellationTokenSource.Dispose();
-            }
+                // Cancelar operações em andamento
+                _cancellationTokenSource?.Cancel();
+                _cancellationTokenSource?.Dispose();
+                _cancellationTokenSource = null;
 
-            if (_serviceLayerClient != null)
+                // Desconectar service layer
+                if (_serviceLayerClient != null)
+                {
+                    _serviceLayerClient.DisconnectAsync(CancellationToken.None).Wait(1000);
+                }
+
+                // Limpar DataTable
+                var dt = GetDataTable();
+                dt?.Rows.Clear();
+
+                // Limpar grid
+                oGrid?.Clear();
+
+                FormManager.RemoverFormulario(UIAPIRawForm.UniqueID);
+            }
+            catch (Exception ex)
             {
-                _serviceLayerClient.DisconnectAsync(CancellationToken.None).Wait(1000);
+                System.Diagnostics.Debug.WriteLine($"Erro ao fechar: {ex.Message}");
             }
 
             // Limpar cache
@@ -1147,26 +1196,47 @@ namespace ItTech.Tool.AddonNFS.Forms
                 // Executar em thread STA para o diálogo funcionar corretamente
                 Thread thread = new Thread(() =>
                 {
-                    using (System.Windows.Forms.SaveFileDialog saveDialog = new System.Windows.Forms.SaveFileDialog())
+                    // Criar dummy form para garantir que o diálogo apareça
+                    using (System.Windows.Forms.Form dummyForm = new System.Windows.Forms.Form())
                     {
-                        // Configurar o diálogo
-                        saveDialog.Filter = "Arquivo Excel (*.xlsx)|*.xlsx|Todos os arquivos (*.*)|*.*";
-                        saveDialog.Title = "Salvar relatório de erros NFS-e";
-                        saveDialog.DefaultExt = "xlsx";
-                        saveDialog.AddExtension = true;
-                        saveDialog.OverwritePrompt = true;
-
-                        // Sugerir nome do arquivo
-                        string nomeArquivo = $"Erros_NFS_{_grupo.Nome}_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
-                        saveDialog.FileName = nomeArquivo;
-
-                        // Definir diretório inicial
-                        saveDialog.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-
-                        if (saveDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                        // Configurar dummy form
+                        dummyForm.TopMost = true;
+                        dummyForm.WindowState = System.Windows.Forms.FormWindowState.Minimized;
+                        dummyForm.ShowInTaskbar = false;
+                        dummyForm.FormBorderStyle = System.Windows.Forms.FormBorderStyle.None;
+                        dummyForm.Size = new System.Drawing.Size(1, 1);
+                        dummyForm.StartPosition = System.Windows.Forms.FormStartPosition.Manual;
+                        dummyForm.Location = new System.Drawing.Point(-1000, -1000);
+                        dummyForm.Opacity = 0;
+                        
+                        // Mostrar o form para criar handle válido
+                        dummyForm.Show();
+                        dummyForm.BringToFront();
+                        
+                        using (System.Windows.Forms.SaveFileDialog saveDialog = new System.Windows.Forms.SaveFileDialog())
                         {
-                            caminhoArquivo = saveDialog.FileName;
+                            // Configurar o diálogo
+                            saveDialog.Filter = "Arquivo Excel (*.xlsx)|*.xlsx|Todos os arquivos (*.*)|*.*";
+                            saveDialog.Title = "Salvar relatório de erros NFS-e";
+                            saveDialog.DefaultExt = "xlsx";
+                            saveDialog.AddExtension = true;
+                            saveDialog.OverwritePrompt = true;
+
+                            // Sugerir nome do arquivo
+                            string nomeArquivo = $"Erros_NFS_{_grupo.Nome}_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
+                            saveDialog.FileName = nomeArquivo;
+
+                            // Definir diretório inicial
+                            saveDialog.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+
+                            // Usar dummy form como parent
+                            if (saveDialog.ShowDialog(dummyForm) == System.Windows.Forms.DialogResult.OK)
+                            {
+                                caminhoArquivo = saveDialog.FileName;
+                            }
                         }
+                        
+                        dummyForm.Close();
                     }
                 });
 
