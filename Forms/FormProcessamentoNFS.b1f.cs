@@ -45,9 +45,9 @@ namespace ItTech.Tool.AddonNFS.Forms
         // Cores de status
         private readonly Dictionary<StatusLinha, int> CORES_STATUS = new Dictionary<StatusLinha, int>
         {
-            { StatusLinha.Sucesso, 11854805 },   // Verde
-            { StatusLinha.Erro, 2237106 },       // Vermelho escuro (RGB: 178,34,34)
-            { StatusLinha.Pendente, 16436871 }   // Azul claro (RGB: 135,206,250)
+            { StatusLinha.Sucesso, 11854805 },   // Verde suave (RGB: 213,245,180)
+            { StatusLinha.Erro, 16758465 },      // Vermelho suave (RGB: 255,182,193) - Rosa claro
+            { StatusLinha.Pendente, 11393254 }   // Azul suave (RGB: 173,216,230) - Azul bebê
         };
 
         #endregion
