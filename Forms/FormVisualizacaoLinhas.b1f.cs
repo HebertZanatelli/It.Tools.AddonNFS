@@ -1541,15 +1541,6 @@ namespace ItTech.Tool.AddonNFS.Forms
             }
         }
 
-                FormManager.RemoverFormulario(UIAPIRawForm.UniqueID);
-            }
-            catch (Exception ex)
-            {
-                Application.SBO_Application.SetStatusBarMessage($"Erro ao fechar: {ex.Message}",
-                    BoMessageTime.bmt_Short, true);
-            }
-        }
-
         private void Form_ResizeAfter(SBOItemEventArg pVal)
         {
             try
