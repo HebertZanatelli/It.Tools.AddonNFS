@@ -42,12 +42,12 @@ namespace ItTech.Tool.AddonNFS.Forms
         private Dictionary<string, StatusLinha> _ultimoStatusCache = new Dictionary<string, StatusLinha>();
         private bool _zebraStripeAplicado = false;
 
-        // Cores de status - Baseadas em pesquisa UX/UI
+        // Cores de status - SUPER SIMPLES E CLARAS
         private readonly Dictionary<StatusLinha, int> CORES_STATUS = new Dictionary<StatusLinha, int>
         {
-            { StatusLinha.Sucesso, 10027160 },   // Verde Menta Suave (RGB: 152,251,152) #98FB98
-            { StatusLinha.Erro, 16767673 },      // Rosa Pêssego (RGB: 255,218,185) #FFDAB9
-            { StatusLinha.Pendente, 11591910 }   // Azul Céu Suave (RGB: 176,224,230) #B0E0E6
+            { StatusLinha.Sucesso, 13172680 },   // Verde bem claro (200,255,200)
+            { StatusLinha.Erro, 13158655 },      // Rosa bem claro (255,200,200)
+            { StatusLinha.Pendente, 16763080 }   // Azul bem claro (200,200,255)
         };
 
         #endregion
