@@ -859,9 +859,6 @@ namespace ItTech.Tool.AddonNFS.Forms
         {
             BubbleEvent = true;
 
-            // Evitar múltiplos cliques
-            pVal.ItemChanged = false;
-            
             if (_processamentoEmAndamento || _totalSelecionadas == 0)
             {
                 if (_totalSelecionadas == 0)
