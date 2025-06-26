@@ -46,7 +46,7 @@ namespace ItTech.Tool.AddonNFS.Forms
         private readonly Dictionary<StatusLinha, int> CORES_STATUS = new Dictionary<StatusLinha, int>
         {
             { StatusLinha.Sucesso, 11854805 },   // Verde suave (RGB: 213,245,180)
-            { StatusLinha.Erro, 16758465 },      // Vermelho suave (RGB: 255,182,193) - Rosa claro
+            { StatusLinha.Erro, 16775408 },      // Rosa bebê suave (RGB: 255,240,245) - #FFF0F5
             { StatusLinha.Pendente, 11393254 }   // Azul suave (RGB: 173,216,230) - Azul bebê
         };
 
@@ -515,7 +515,8 @@ namespace ItTech.Tool.AddonNFS.Forms
             finally
             {
                 _processamentoEmAndamento = false;
-                CarregarDados();
+                // Apenas atualizar botões, não recarregar tudo
+                AtualizarBotoes();
             }
         }
 
@@ -525,51 +526,74 @@ namespace ItTech.Tool.AddonNFS.Forms
             {
                 if (_grupo == null || _grupo.Linhas == null) return;
 
-                // Indicar que está atualizando interface
-                Application.SBO_Application.StatusBar.SetText("Atualizando resultados... Por favor aguarde.", 
-                    BoMessageTime.bmt_Short, BoStatusBarMessageType.smt_Warning);
-
                 var dt = GetDataTable();
                 if (dt == null || resultados == null || resultados.Count == 0) return;
 
+                // Mostrar indicador apenas se houver muitos resultados
+                bool mostrarProgresso = resultados.Count > 50;
+                if (mostrarProgresso)
+                {
+                    Application.SBO_Application.StatusBar.SetText($"Atualizando {resultados.Count} resultados... Por favor aguarde.", 
+                        BoMessageTime.bmt_Short, BoStatusBarMessageType.smt_Warning);
+                }
+
+                // Criar índice para lookup O(1) ao invés de O(n²)
+                var codeToIndex = new Dictionary<string, int>();
+                for (int i = 0; i < dt.Rows.Count; i++)
+                {
+                    var code = dt.GetValue("Code", i)?.ToString();
+                    if (!string.IsNullOrEmpty(code))
+                    {
+                        codeToIndex[code] = i;
+                    }
+                }
+
+                // Criar índice para linhas também
+                var linhasPorCode = _grupo.Linhas.ToDictionary(l => l.Code, l => l);
+
+                // Atualizar DataTable com resultados - O(n) ao invés de O(n²)
                 foreach (var resultado in resultados)
                 {
-                    for (int i = 0; i < dt.Rows.Count; i++)
+                    if (codeToIndex.TryGetValue(resultado.CodigoLinha, out int index))
                     {
-                        if (dt.GetValue("Code", i).ToString() == resultado.CodigoLinha)
+                        dt.SetValue("Status", index, ObterTextoStatus(resultado.Sucesso ? StatusLinha.Sucesso : StatusLinha.Erro));
+                        dt.SetValue("Mensagem", index, Truncar(resultado.Mensagem, 254));
+                        dt.SetValue("Proc", index, "N");
+
+                        if (resultado.DocEntry.HasValue)
                         {
-                            dt.SetValue("Status", i, ObterTextoStatus(resultado.Sucesso ? StatusLinha.Sucesso : StatusLinha.Erro));
-                            dt.SetValue("Mensagem", i, Truncar(resultado.Mensagem, 254));
-                            dt.SetValue("Proc", i, "N");
+                            dt.SetValue("DocEntry", index, resultado.DocEntry.Value);
+                            dt.SetValue("DocNum", index, resultado.DocNum ?? resultado.DocEntry.Value);
+                        }
 
-                            if (resultado.DocEntry.HasValue)
-                            {
-                                dt.SetValue("DocEntry", i, resultado.DocEntry.Value);
-                                dt.SetValue("DocNum", i, resultado.DocNum ?? resultado.DocEntry.Value);
-                            }
-
-                            // Atualizar objeto
-                            var linha = _grupo.Linhas.FirstOrDefault(l => l.Code == resultado.CodigoLinha);
-                            if (linha != null)
-                            {
-                                linha.Status = resultado.Sucesso ? StatusLinha.Sucesso : StatusLinha.Erro;
-                                linha.MensagemErro = resultado.Mensagem;
-                                linha.DocEntry = resultado.DocEntry;
-                                linha.DocNum = resultado.DocNum;
-                            }
-                            break;
+                        // Atualizar objeto - também O(1)
+                        if (linhasPorCode.TryGetValue(resultado.CodigoLinha, out var linha))
+                        {
+                            linha.Status = resultado.Sucesso ? StatusLinha.Sucesso : StatusLinha.Erro;
+                            linha.MensagemErro = resultado.Mensagem;
+                            linha.DocEntry = resultado.DocEntry;
+                            linha.DocNum = resultado.DocNum;
                         }
                     }
                 }
 
+                // Atualizar grid apenas uma vez
                 oGrid.LoadFromDataSource();
                 
+                // Aplicar estilo apenas nas linhas que mudaram
                 AplicarEstiloMatrixOtimizado(resultados);
-                AtualizarInterface();
                 
-                // Indicar conclusão
-                Application.SBO_Application.StatusBar.SetText("Resultados atualizados com sucesso!", 
-                    BoMessageTime.bmt_Short, BoStatusBarMessageType.smt_Success);
+                // Atualizar totais e status apenas
+                RecalcularTotais();
+                AtualizarStatus();
+                AtualizarBotoes();
+                
+                // Indicar conclusão se estava mostrando progresso
+                if (mostrarProgresso)
+                {
+                    Application.SBO_Application.StatusBar.SetText("Resultados atualizados com sucesso!", 
+                        BoMessageTime.bmt_Short, BoStatusBarMessageType.smt_Success);
+                }
             }
             catch (Exception ex)
             {
