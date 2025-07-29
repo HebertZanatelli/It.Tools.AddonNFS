@@ -318,7 +318,6 @@ namespace ItTech.Tool.AddonNFS.Services
             {
                 CardCode = cardCode,
                 DocDate = docDate,
-                DocDueDate = docDueDate,
                 PaymentGroupCode = paymentGroupCode,
                 SequenceCode = sequenceCode,
                 SequenceModel = sequenceModel,
@@ -425,7 +424,6 @@ namespace ItTech.Tool.AddonNFS.Services
         {
             public string CardCode { get; set; }
             public DateTime DocDate { get; set; } = DateTime.Now;
-            public DateTime DocDueDate { get; set; } = DateTime.Now;
             public int PaymentGroupCode { get; set; } = -2;
             public int? SequenceCode { get; set; } = 31;
             public string SequenceModel { get; set; } = "46";

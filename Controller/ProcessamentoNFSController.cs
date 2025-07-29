@@ -244,7 +244,7 @@ namespace ItTech.Tool.AddonNFS.Controllers
                 {
                     CardCode = linha.CodigoCliente,
                     DocDate = dataDocumento,
-                    DocDueDate = dataLancamento
+                   // DocDueDate = dataLancamento
                 };
 
                 // Filial
@@ -315,7 +315,6 @@ namespace ItTech.Tool.AddonNFS.Controllers
                 }
 
                 invoiceRequest.DocumentLines.Add(documentLine);
-
                 // Criar via Service Layer
                 var invoiceResponse = _invoiceClient.CreateInvoice(invoiceRequest);
 

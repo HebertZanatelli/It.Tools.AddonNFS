@@ -86,13 +86,14 @@ namespace ItTech.Tool.AddonNFS.Forms
             this.BtnVoltar.ClickBefore += this.BtnVoltar_ClickBefore;
             this.BtnFechar.ClickBefore += this.BtnFechar_ClickBefore;
             this.Matrix0 = ((SAPbouiCOM.Matrix)(this.GetItem("Item_1").Specific));
+            
             this.OnCustomInitialize();
 
         }
 
         public override void OnInitializeFormEvents()
         {
-            this.LoadAfter += Form_LoadAfter;
+            
             this.CloseBefore += Form_CloseBefore;
             this.ResizeAfter += Form_ResizeAfter;
         }
@@ -105,9 +106,11 @@ namespace ItTech.Tool.AddonNFS.Forms
 
                 _serviceLayerClient = new ServiceLayerInvoiceClient();
                 _processamentoController = new ProcessamentoNFSController(company, _serviceLayerClient);
-
-               // ConfigurarDataTable();
-               // ConfigurarMatrix();
+                System.Threading.Thread.Sleep(100); // Pequeno delay
+                this.UIAPIRawForm.Height = 550; // Menor que 600 para forçar scroll
+                this.UIAPIRawForm.Update();
+                // ConfigurarDataTable();
+                // ConfigurarMatrix();
             }
             catch (Exception ex)
             {
@@ -195,7 +198,7 @@ namespace ItTech.Tool.AddonNFS.Forms
             //var lbDocEntry = (LinkedButton)MatrixResultados.Columns.Item("DocEntry").ExtendedObject;
             //lbDocEntry.LinkedObject = BoLinkedObject.lf_Invoice;
 
-          
+
         }
 
         #endregion
@@ -227,8 +230,8 @@ namespace ItTech.Tool.AddonNFS.Forms
                 _totalSelecionadas = 0;
                 _valorTotalSelecionado = 0;
 
-              //  CarregarMatrix();
-              //  AtualizarInterface();
+                //  CarregarMatrix();
+                //  AtualizarInterface();
             }
             finally
             {
@@ -292,7 +295,7 @@ namespace ItTech.Tool.AddonNFS.Forms
             //MatrixResultados.LoadFromDataSource();
 
             // Desabilitar combo para linhas processadas
-           // AtualizarEstadoCombos();
+            // AtualizarEstadoCombos();
 
             // Usar ajuste manual ao invés de AutoResizeColumns
             AjustarLarguraColunas();
@@ -325,7 +328,7 @@ namespace ItTech.Tool.AddonNFS.Forms
                 //MatrixResultados.Columns.Item("ObsNF").Width = 120;
                 //MatrixResultados.Columns.Item("Mensagem").Width = 200;
 
-               
+
             }
             finally
             {
@@ -858,7 +861,8 @@ namespace ItTech.Tool.AddonNFS.Forms
         {
             UIAPIRawForm.Title = "Processamento de NFS-e em Lote - Resultado";
             FormManager.RegistrarFormulario(UIAPIRawForm.UniqueID, "Resultado Processamento", false, null, _grupo?.Code, 4);
-
+            this.UIAPIRawForm.Height = 600; // Menor que 699 original
+            this.UIAPIRawForm.Update();
             // Aplicar ajuste de colunas após carregamento
             System.Windows.Forms.Timer timer = new System.Windows.Forms.Timer();
             timer.Interval = 500; // 500ms
@@ -871,20 +875,97 @@ namespace ItTech.Tool.AddonNFS.Forms
                 //{
                 //    AjustarLarguraColunas();
                 //}
+
+                // Ajustar componentes após carregamento
+                AjustarComponentesParaTamanhoJanela();
             };
             timer.Start();
         }
 
         private void Form_ResizeAfter(SBOItemEventArg pVal)
         {
-            //try
-            //{
-            //    if (MatrixResultados != null && MatrixResultados.RowCount > 0)
-            //    {
-            //        AjustarLarguraColunas();
-            //    }
-            //}
-            //catch { }
+            AjustarComponentesParaTamanhoJanela();
+        }
+
+        private void AjustarComponentesParaTamanhoJanela()
+        {
+            try
+            {
+                UIAPIRawForm.Freeze(true);
+
+                int formWidth = UIAPIRawForm.Width;
+                int formHeight = UIAPIRawForm.Height;
+
+                // Ajusta Matrix
+                var matrix = this.GetItem("Item_1");
+                if (matrix != null)
+                {
+                    matrix.Width = formWidth - matrix.Left - 21;
+                    matrix.Height = formHeight - matrix.Top - 160;
+                }
+
+                // Ajusta label de progresso
+                var lblProg = this.GetItem("lblProg");
+                if (lblProg != null && matrix != null)
+                {
+                    lblProg.Top = matrix.Top + matrix.Height + 10;
+                    lblProg.Width = matrix.Width;
+                }
+
+                // Ajusta posições dos botões
+                int posYBotoes1 = lblProg != null ? lblProg.Top + 30 : formHeight - 110;
+                int posYBotoes2 = posYBotoes1 + 28;
+
+                // Primeira linha de botões
+                var btnProc = this.GetItem("btnProc");
+                if (btnProc != null)
+                {
+                    btnProc.Top = posYBotoes1;
+                }
+
+                var btnExpErr = this.GetItem("btnExpErr");
+                if (btnExpErr != null)
+                {
+                    btnExpErr.Top = posYBotoes1;
+                }
+
+                // Segunda linha de botões
+                var btnVoltar = this.GetItem("btnVoltar");
+                if (btnVoltar != null)
+                {
+                    btnVoltar.Top = posYBotoes2;
+                }
+
+                // Botão Fechar - sempre no canto direito
+                var btnFechar = this.GetItem("btnFechar");
+                if (btnFechar != null)
+                {
+                    btnFechar.Top = posYBotoes2;
+                    btnFechar.Left = formWidth - btnFechar.Width - 21;
+                }
+
+                // Ajustar combo de filtro se a janela for grande
+                if (formWidth > 1200)
+                {
+                    var cmbFiltro = this.GetItem("cmbFiltro");
+                    if (cmbFiltro != null)
+                    {
+                        cmbFiltro.Width = 200;
+                        cmbFiltro.Left = formWidth - cmbFiltro.Width - 21;
+                    }
+
+                    var lblFiltro = this.GetItem("lblFiltro");
+                    if (lblFiltro != null && cmbFiltro != null)
+                    {
+                        lblFiltro.Left = cmbFiltro.Left - 55;
+                    }
+                }
+            }
+            catch { }
+            finally
+            {
+                UIAPIRawForm.Freeze(false);
+            }
         }
 
         private void Form_CloseBefore(SBOItemEventArg pVal, out bool BubbleEvent)
