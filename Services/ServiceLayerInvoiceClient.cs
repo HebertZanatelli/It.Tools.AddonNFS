@@ -426,11 +426,18 @@ namespace ItTech.Tool.AddonNFS.Services
             public DateTime DocDate { get; set; } = DateTime.Now;
             public int PaymentGroupCode { get; set; } = -2;
             public int? SequenceCode { get; set; } = 31;
-            public string SequenceModel { get; set; } = "46";
+            public string SequenceModel { get; set; }
             public string U_SKILL_TipTrib { get; set; } = "V";
             public string OpeningRemarks { get; set; } = "BANCO XXXX";
             public string BPL_IDAssignedToInvoice { get; set; } = "";
+            public InvoiceTaxExtension TaxExtension { get; set; } = null;
             public List<InvoiceDocumentLine> DocumentLines { get; set; } = new List<InvoiceDocumentLine>();
+
+        }
+        public class InvoiceTaxExtension
+        {
+            public string State { get; set; } = null;
+            public string County { get; set; } = null;
         }
 
         public class InvoiceDocumentLine
