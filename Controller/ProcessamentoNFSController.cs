@@ -4,6 +4,8 @@ using System.Linq;
 using ItTech.Tool.AddonNFS.Models;
 using ItTech.Tool.AddonNFS.Services;
 using SAPbobsCOM;
+using System.Configuration;
+using static ItTech.Tool.AddonNFS.Services.ServiceLayerInvoiceClient;
 
 namespace ItTech.Tool.AddonNFS.Controllers
 {
@@ -226,11 +228,52 @@ namespace ItTech.Tool.AddonNFS.Controllers
 
         #region Métodos Privados
 
+        private string ObterModelPeloSeqCode(int seqCode)
+        {
+            try
+            {
+                var recordset = (SAPbobsCOM.Recordset)_company.GetBusinessObject(SAPbobsCOM.BoObjectTypes.BoRecordset);
+                recordset.DoQuery($"SELECT \"Model\" FROM NFN1 WHERE \"SeqCode\" = {seqCode}");
+
+                if (recordset.RecordCount > 0)
+                    return recordset.Fields.Item("Model").Value.ToString();
+
+                return string.Empty;
+            }
+            catch (Exception ex)
+            {
+                // Pode registrar log, caso use ILogger ou similar
+                return string.Empty;
+            }
+        }
+
+        private string ObterCNPJ(int bplId)
+        {
+            try
+            {
+                var recordset = (SAPbobsCOM.Recordset)_company.GetBusinessObject(SAPbobsCOM.BoObjectTypes.BoRecordset);
+                recordset.DoQuery($"SELECT \"TaxIdNum\" FROM OBPL WHERE \"BPLId\" = {bplId}");
+
+                if (recordset.RecordCount > 0)
+                    return recordset.Fields.Item("TaxIdNum").Value.ToString();
+
+                return string.Empty;
+            }
+            catch (Exception ex)
+            {
+                // Pode registrar log, caso use ILogger ou similar
+                return string.Empty;
+            }
+        }
+
+
+
         /// <summary>
         /// Processa uma única linha - USANDO SERVICE LAYER
         /// </summary>
         private ResultadoProcessamento ProcessarLinha(LinhaImportacao linha, DateTime dataLancamento, DateTime dataDocumento)
         {
+
             ResultadoProcessamento resultado = new ResultadoProcessamento
             {
                 CodigoLinha = linha.Code,
@@ -244,8 +287,23 @@ namespace ItTech.Tool.AddonNFS.Controllers
                 {
                     CardCode = linha.CodigoCliente,
                     DocDate = dataDocumento,
-                   // DocDueDate = dataLancamento
+                    // DocDueDate = dataLancamento
                 };
+
+                var modelSeqCode = ObterModelPeloSeqCode(int.Parse(linha.CodSeq));
+                var cnpjFilial = ObterCNPJ(int.Parse(linha.Filial));
+                string cnpjRegra = ConfigurationManager.AppSettings["CNPJRegra"];
+
+                
+
+                if (modelSeqCode == "46" && cnpjFilial == cnpjRegra) {
+                    invoiceRequest.TaxExtension = new InvoiceTaxExtension();
+                    invoiceRequest.TaxExtension.State = "SP";
+                    invoiceRequest.TaxExtension.County = "5215";
+                    
+                }
+
+                invoiceRequest.SequenceModel = modelSeqCode ?? "46";
 
                 // Filial
                 if (!string.IsNullOrEmpty(linha.Filial))
