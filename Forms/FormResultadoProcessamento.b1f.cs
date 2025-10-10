@@ -471,10 +471,8 @@ namespace ItTech.Tool.AddonNFS.Forms
                         var resultadosLote = await Task.Run(() =>
                         {
                             return _processamentoController.ProcessarLinhas(
-                                _grupo.Code,
-                                loteAtual,
-                                _grupo.DataLancamento,
-                                _grupo.DataDocumento
+                                _grupo,
+                                loteAtual
                             );
                         }, combinedCancellation.Token);
 
@@ -980,7 +978,7 @@ namespace ItTech.Tool.AddonNFS.Forms
                 {
                     try
                     {
-                        await _serviceLayerClient?.DisconnectAsync(CancellationToken.None);
+                        //await _serviceLayerClient?.DisconnectAsync(CancellationToken.None);
                     }
                     catch { }
                 });

@@ -5,6 +5,7 @@ using ItTech.Tool.AddonNFS.Models;
 using ItTech.Tool.AddonNFS.Services;
 using SAPbobsCOM;
 using System.Configuration;
+using System.Threading.Tasks;
 using static ItTech.Tool.AddonNFS.Services.ServiceLayerInvoiceClient;
 
 namespace ItTech.Tool.AddonNFS.Controllers
@@ -117,31 +118,84 @@ namespace ItTech.Tool.AddonNFS.Controllers
         /// <summary>
         /// Processa múltiplas linhas com otimizações de performance
         /// </summary>
-        public List<ResultadoProcessamento> ProcessarLinhasOtimizado(string grupoCode, List<LinhaImportacao> linhas, DateTime dataLancamento, DateTime dataDocumento)
+        /// 
+
+        //public List<ResultadoProcessamento> ProcessarLinhasOtimizado(string grupoCode, List<LinhaImportacao> linhas, DateTime dataLancamento, DateTime dataDocumento)
+        //{
+        //    var tempoInicio = DateTime.Now;
+        //    List<ResultadoProcessamento> resultados = new List<ResultadoProcessamento>();
+
+        //    try
+        //    {
+        //        // Validação em lote
+        //        var validacao = ValidarDadosSAP(linhas);
+        //        if (!validacao.Valida && validacao.Erros.Count > 0)
+        //        {
+        //            throw new Exception($"Erros de validação: {string.Join(", ", validacao.Erros.Take(3))}");
+        //        }
+
+        //        // Atualizar status para processamento
+        //        _grupoController.AtualizarStatusGrupoSimples(grupoCode, StatusGrupo.EmProcessamento);
+
+        //        // Processar documentos via Service Layer
+        //        for (int i = 0; i < linhas.Count; i++)
+        //        {
+        //            var linha = linhas[i];
+        //            var resultado = ProcessarLinha(grupo.TipoDocumento, linha, grupo.DataLancamento, grupo.DataDocumento);
+        //            resultados.Add(resultado);
+
+        //            // Atualizar objeto em memória
+        //            linha.Status = resultado.Sucesso ? StatusLinha.Sucesso : StatusLinha.Erro;
+        //            linha.DocNum = resultado.DocNum;
+        //            linha.DocEntry = resultado.DocEntry;
+        //            linha.MensagemErro = resultado.Mensagem;
+        //            linha.Reprocessar = !resultado.Sucesso;
+        //        }
+
+        //        // Atualizar banco em lote
+        //        AtualizarStatusLinhasEmLote(linhas, resultados);
+
+        //        // ✅ CORREÇÃO: Usar método centralizado
+        //        RecalcularStatusGrupoEficiente(grupoCode);
+
+        //        var tempoTotal = DateTime.Now - tempoInicio;
+        //        System.Diagnostics.Debug.WriteLine($"🚀 TOTAL OTIMIZADO: {tempoTotal.TotalSeconds:F1}s para {linhas.Count} linhas");
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        try
+        //        {
+        //            _grupoController.AtualizarStatusGrupoSimples(grupoCode, StatusGrupo.Erro);
+        //        }
+        //        catch { }
+
+        //        throw new Exception($"Erro no processamento otimizado: {ex.Message}", ex);
+        //    }
+
+        //    return resultados;
+        //}
+
+        public List<ResultadoProcessamento> ProcessarLinhasOtimizado(GrupoLote grupo, List<LinhaImportacao> linhas)
         {
             var tempoInicio = DateTime.Now;
             List<ResultadoProcessamento> resultados = new List<ResultadoProcessamento>();
 
             try
             {
-                // Validação em lote
                 var validacao = ValidarDadosSAP(linhas);
                 if (!validacao.Valida && validacao.Erros.Count > 0)
                 {
                     throw new Exception($"Erros de validação: {string.Join(", ", validacao.Erros.Take(3))}");
                 }
 
-                // Atualizar status para processamento
-                _grupoController.AtualizarStatusGrupoSimples(grupoCode, StatusGrupo.EmProcessamento);
+                _grupoController.AtualizarStatusGrupoSimples(grupo.Code, StatusGrupo.EmProcessamento);
 
-                // Processar documentos via Service Layer
                 for (int i = 0; i < linhas.Count; i++)
                 {
                     var linha = linhas[i];
-                    var resultado = ProcessarLinha(linha, dataLancamento, dataDocumento);
+                    var resultado = ProcessarLinha(grupo.TipoDocumento, linha, grupo.DataLancamento, grupo.DataDocumento);
                     resultados.Add(resultado);
 
-                    // Atualizar objeto em memória
                     linha.Status = resultado.Sucesso ? StatusLinha.Sucesso : StatusLinha.Erro;
                     linha.DocNum = resultado.DocNum;
                     linha.DocEntry = resultado.DocEntry;
@@ -149,23 +203,15 @@ namespace ItTech.Tool.AddonNFS.Controllers
                     linha.Reprocessar = !resultado.Sucesso;
                 }
 
-                // Atualizar banco em lote
                 AtualizarStatusLinhasEmLote(linhas, resultados);
-
-                // ✅ CORREÇÃO: Usar método centralizado
-                RecalcularStatusGrupoEficiente(grupoCode);
+                RecalcularStatusGrupoEficiente(grupo.Code);
 
                 var tempoTotal = DateTime.Now - tempoInicio;
-                System.Diagnostics.Debug.WriteLine($"🚀 TOTAL OTIMIZADO: {tempoTotal.TotalSeconds:F1}s para {linhas.Count} linhas");
+                System.Diagnostics.Debug.WriteLine($"TOTAL OTIMIZADO: {tempoTotal.TotalSeconds:F1}s para {linhas.Count} linhas");
             }
             catch (Exception ex)
             {
-                try
-                {
-                    _grupoController.AtualizarStatusGrupoSimples(grupoCode, StatusGrupo.Erro);
-                }
-                catch { }
-
+                try { _grupoController.AtualizarStatusGrupoSimples(grupo.Code, StatusGrupo.Erro); } catch { }
                 throw new Exception($"Erro no processamento otimizado: {ex.Message}", ex);
             }
 
@@ -175,23 +221,71 @@ namespace ItTech.Tool.AddonNFS.Controllers
         /// <summary>
         /// Processa as linhas selecionadas criando as NFS-e
         /// </summary>
-        public List<ResultadoProcessamento> ProcessarLinhas(string grupoCode, List<LinhaImportacao> linhas, DateTime dataLancamento, DateTime dataDocumento)
+        /// 
+
+        //public List<ResultadoProcessamento> ProcessarLinhas(string grupoCode, List<LinhaImportacao> linhas, DateTime dataLancamento, DateTime dataDocumento)
+        //{
+        //    List<ResultadoProcessamento> resultados = new List<ResultadoProcessamento>();
+
+        //    try
+        //    {
+        //        // Atualizar status para processamento
+        //        _grupoController.AtualizarStatusGrupoSimples(grupoCode, StatusGrupo.EmProcessamento);
+
+        //        // Processar cada linha
+        //        for (int i = 0; i < linhas.Count; i++)
+        //        {
+        //            var linha = linhas[i];
+        //            var resultado = ProcessarLinha(linha, dataLancamento, dataDocumento);
+        //            resultados.Add(resultado);
+
+        //            // Atualizar linha individual no banco
+        //            try
+        //            {
+        //                AtualizarStatusLinha(linha, resultado);
+        //            }
+        //            catch (Exception ex)
+        //            {
+        //                resultado.Mensagem += $" | Erro ao salvar: {ex.Message}";
+        //            }
+        //        }
+
+        //        // ✅ CORREÇÃO: Usar método centralizado ao invés de cálculo manual
+        //        bool sucessoSalvamento = RecalcularStatusGrupoEficiente(grupoCode);
+
+        //        if (!sucessoSalvamento)
+        //        {
+        //            throw new Exception("Falha ao salvar totais do grupo no banco de dados");
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        try
+        //        {
+        //            _grupoController.AtualizarStatusGrupoSimples(grupoCode, StatusGrupo.Erro);
+        //        }
+        //        catch { }
+
+        //        throw new Exception($"Erro no processamento: {ex.Message}", ex);
+        //    }
+
+        //    return resultados;
+        //}
+
+        public List<ResultadoProcessamento> ProcessarLinhas(GrupoLote grupo, List<LinhaImportacao> linhas)
         {
             List<ResultadoProcessamento> resultados = new List<ResultadoProcessamento>();
 
             try
             {
-                // Atualizar status para processamento
-                _grupoController.AtualizarStatusGrupoSimples(grupoCode, StatusGrupo.EmProcessamento);
+                _grupoController.AtualizarStatusGrupoSimples(grupo.Code, StatusGrupo.EmProcessamento);
 
-                // Processar cada linha
                 for (int i = 0; i < linhas.Count; i++)
                 {
                     var linha = linhas[i];
-                    var resultado = ProcessarLinha(linha, dataLancamento, dataDocumento);
+                    var resultado = ProcessarLinha(grupo.TipoDocumento, linha, grupo.DataLancamento, grupo.DataDocumento);
                     resultados.Add(resultado);
 
-                    // Atualizar linha individual no banco
                     try
                     {
                         AtualizarStatusLinha(linha, resultado);
@@ -202,8 +296,7 @@ namespace ItTech.Tool.AddonNFS.Controllers
                     }
                 }
 
-                // ✅ CORREÇÃO: Usar método centralizado ao invés de cálculo manual
-                bool sucessoSalvamento = RecalcularStatusGrupoEficiente(grupoCode);
+                bool sucessoSalvamento = RecalcularStatusGrupoEficiente(grupo.Code);
 
                 if (!sucessoSalvamento)
                 {
@@ -212,18 +305,12 @@ namespace ItTech.Tool.AddonNFS.Controllers
             }
             catch (Exception ex)
             {
-                try
-                {
-                    _grupoController.AtualizarStatusGrupoSimples(grupoCode, StatusGrupo.Erro);
-                }
-                catch { }
-
+                try { _grupoController.AtualizarStatusGrupoSimples(grupo.Code, StatusGrupo.Erro); } catch { }
                 throw new Exception($"Erro no processamento: {ex.Message}", ex);
             }
 
             return resultados;
         }
-
         #endregion
 
         #region Métodos Privados
@@ -271,10 +358,219 @@ namespace ItTech.Tool.AddonNFS.Controllers
         /// <summary>
         /// Processa uma única linha - USANDO SERVICE LAYER
         /// </summary>
-        private ResultadoProcessamento ProcessarLinha(LinhaImportacao linha, DateTime dataLancamento, DateTime dataDocumento)
-        {
+        /// 
 
-            ResultadoProcessamento resultado = new ResultadoProcessamento
+        private ResultadoProcessamento CriarNotaFiscalSaida(LinhaImportacao linha, DateTime dataLancamento, DateTime dataDocumento, ResultadoProcessamento resultado)
+        {
+            var invoiceRequest = new ServiceLayerInvoiceClient.InvoiceRequest
+            {
+                CardCode = linha.CodigoCliente,
+                DocDate = dataDocumento,
+            };
+
+            if (!string.IsNullOrEmpty(linha.Filial))
+            {
+                invoiceRequest.BPL_IDAssignedToInvoice = linha.Filial;
+            }
+
+            // Lógica da Regra do Município
+            var modelSeqCode = ObterModelPeloSeqCode(int.Parse(linha.CodSeq));
+            var cnpjFilial = ObterCNPJ(int.Parse(linha.Filial));
+            string cnpjRegra = ConfigurationManager.AppSettings["CNPJRegra"];
+
+            if (modelSeqCode == "46" && cnpjFilial == cnpjRegra)
+            {
+                invoiceRequest.TaxExtension = new ServiceLayerInvoiceClient.InvoiceTaxExtension
+                {
+                    State = "SP",
+                    County = "5215"
+                };
+            }
+
+            if (!string.IsNullOrEmpty(linha.TipoTributacao))
+            {
+                invoiceRequest.U_SKILL_TipTrib = linha.TipoTributacao;
+            }
+
+            if (!string.IsNullOrEmpty(linha.ObservacaoNF))
+            {
+                invoiceRequest.OpeningRemarks = linha.ObservacaoNF;
+            }
+            else
+            {
+                invoiceRequest.OpeningRemarks = "BANCO XXXX";
+            }
+
+            if (!string.IsNullOrEmpty(linha.CondicaoPagamento))
+            {
+                invoiceRequest.PaymentGroupCode = Convert.ToInt32(linha.CondicaoPagamento);
+            }
+
+            if (!string.IsNullOrEmpty(linha.CodSeq))
+            {
+                invoiceRequest.SequenceCode = Convert.ToInt32(linha.CodSeq);
+            }
+
+            var documentLine = new ServiceLayerInvoiceClient.InvoiceDocumentLine
+            {
+                ItemCode = linha.CodigoItem,
+                Quantity = 1,
+                UnitPrice = linha.Valor
+            };
+
+            if (!string.IsNullOrEmpty(linha.CodigoImposto))
+            {
+                documentLine.TaxCode = linha.CodigoImposto;
+            }
+
+            if (!string.IsNullOrEmpty(linha.Utilizacao))
+            {
+                documentLine.Usage = Convert.ToInt32(linha.Utilizacao);
+            }
+
+            invoiceRequest.DocumentLines.Add(documentLine);
+
+            var invoiceResponse = _invoiceClient.CreateInvoice(invoiceRequest);
+
+            resultado.Sucesso = true;
+            resultado.DocEntry = invoiceResponse.DocEntry;
+            resultado.DocNum = invoiceResponse.DocNum;
+            resultado.Mensagem = $"NFS-e criada - DocNum: {invoiceResponse.DocNum}";
+
+            return resultado;
+        }
+        //private ResultadoProcessamento ProcessarLinha(LinhaImportacao linha, DateTime dataLancamento, DateTime dataDocumento)
+        //{
+
+        //    ResultadoProcessamento resultado = new ResultadoProcessamento
+        //    {
+        //        CodigoLinha = linha.Code,
+        //        NumeroLinha = linha.NumeroLinha,
+        //        DataProcessamento = DateTime.Now
+        //    };
+
+        //    try
+        //    {
+        //        var invoiceRequest = new ServiceLayerInvoiceClient.InvoiceRequest
+        //        {
+        //            CardCode = linha.CodigoCliente,
+        //            DocDate = dataDocumento,
+        //            // DocDueDate = dataLancamento
+        //        };
+
+        //        var modelSeqCode = ObterModelPeloSeqCode(int.Parse(linha.CodSeq));
+        //        var cnpjFilial = ObterCNPJ(int.Parse(linha.Filial));
+        //        string cnpjRegra = ConfigurationManager.AppSettings["CNPJRegra"];
+
+
+
+        //        if (modelSeqCode == "46" && cnpjFilial == cnpjRegra) {
+        //            invoiceRequest.TaxExtension = new InvoiceTaxExtension();
+        //            invoiceRequest.TaxExtension.State = "SP";
+        //            invoiceRequest.TaxExtension.County = "5215";
+
+        //        }
+
+        //        invoiceRequest.SequenceModel = modelSeqCode ?? "46";
+
+        //        // Filial
+        //        if (!string.IsNullOrEmpty(linha.Filial))
+        //        {
+        //            invoiceRequest.BPL_IDAssignedToInvoice = linha.Filial;
+        //        }
+
+        //        if(!string.IsNullOrEmpty(linha.TipoTributacao))
+        //        {
+        //            invoiceRequest.U_SKILL_TipTrib = linha.TipoTributacao;
+        //        }
+        //        // Observações
+        //        if (!string.IsNullOrEmpty(linha.ObservacaoNF))
+        //        {
+        //            invoiceRequest.OpeningRemarks = linha.ObservacaoNF;
+        //        }
+        //        else
+        //        {
+        //            invoiceRequest.OpeningRemarks = "BANCO XXXX";
+        //        }
+
+        //        // Condição de pagamento
+        //        if (!string.IsNullOrEmpty(linha.CondicaoPagamento))
+        //        {
+        //            try
+        //            {
+        //                invoiceRequest.PaymentGroupCode = Convert.ToInt32(linha.CondicaoPagamento);
+        //            }
+        //            catch
+        //            {
+        //                invoiceRequest.PaymentGroupCode = -1;
+        //            }
+        //        }
+
+        //        // Sequência do documento
+        //        if (!string.IsNullOrEmpty(linha.CodSeq))
+        //        {
+        //            try
+        //            {
+        //                invoiceRequest.SequenceCode = Convert.ToInt32(linha.CodSeq);
+        //            }
+        //            catch { }
+        //        }
+
+        //        // Linha do documento
+        //        var documentLine = new ServiceLayerInvoiceClient.InvoiceDocumentLine
+        //        {
+        //            ItemCode = linha.CodigoItem,
+        //            Quantity = 1,
+        //            UnitPrice = linha.Valor
+        //        };
+
+        //        // Código de imposto
+        //        if (!string.IsNullOrEmpty(linha.CodigoImposto))
+        //        {
+        //            documentLine.TaxCode = linha.CodigoImposto;
+        //        }
+
+        //        // Utilização
+        //        if (!string.IsNullOrEmpty(linha.Utilizacao))
+        //        {
+        //            try
+        //            {
+        //                documentLine.Usage = Convert.ToInt32(linha.Utilizacao);
+        //            }
+        //            catch { }
+        //        }
+
+        //        invoiceRequest.DocumentLines.Add(documentLine);
+        //        // Criar via Service Layer
+        //        var invoiceResponse = _invoiceClient.CreateInvoice(invoiceRequest);
+
+        //        resultado.Sucesso = true;
+        //        resultado.DocEntry = invoiceResponse.DocEntry;
+        //        resultado.DocNum = invoiceResponse.DocNum;
+        //        resultado.Mensagem = $"NFS-e criada - DocNum: {invoiceResponse.DocNum}";
+        //    }
+        //    catch (ServiceLayerInvoiceClient.ServiceLayerException ex)
+        //    {
+        //        resultado.Sucesso = false;
+        //        resultado.Mensagem = $"[{ex.ServiceLayerCode}] {ex.Message}";
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        resultado.Sucesso = false;
+        //        resultado.Mensagem = $"Erro na linha {linha.NumeroLinha}: {ex.Message}";
+
+        //        if (ex.InnerException != null)
+        //        {
+        //            resultado.Mensagem += $" | {ex.InnerException.Message}";
+        //        }
+        //    }
+
+        //    return resultado;
+        //}
+
+        private ResultadoProcessamento ProcessarLinha(string tipoDocumento, LinhaImportacao linha, DateTime dataLancamento, DateTime dataDocumento)
+        {
+            var resultado = new ResultadoProcessamento
             {
                 CodigoLinha = linha.Code,
                 NumeroLinha = linha.NumeroLinha,
@@ -283,103 +579,20 @@ namespace ItTech.Tool.AddonNFS.Controllers
 
             try
             {
-                var invoiceRequest = new ServiceLayerInvoiceClient.InvoiceRequest
+                switch (tipoDocumento)
                 {
-                    CardCode = linha.CodigoCliente,
-                    DocDate = dataDocumento,
-                    // DocDueDate = dataLancamento
-                };
+                    case "NFS":
+                        return CriarNotaFiscalSaida(linha, dataLancamento, dataDocumento, resultado);
 
-                var modelSeqCode = ObterModelPeloSeqCode(int.Parse(linha.CodSeq));
-                var cnpjFilial = ObterCNPJ(int.Parse(linha.Filial));
-                string cnpjRegra = ConfigurationManager.AppSettings["CNPJRegra"];
+                    case "ENT":
+                        return CriarEntrega(linha, dataLancamento, dataDocumento, resultado);
 
-                
+                    case "NFE":
+                        return CriarNotaFiscalEntrada(linha, dataLancamento, dataDocumento, resultado);
 
-                if (modelSeqCode == "46" && cnpjFilial == cnpjRegra) {
-                    invoiceRequest.TaxExtension = new InvoiceTaxExtension();
-                    invoiceRequest.TaxExtension.State = "SP";
-                    invoiceRequest.TaxExtension.County = "5215";
-                    
+                    default:
+                        throw new InvalidOperationException($"Tipo de documento desconhecido ou não informado: '{tipoDocumento}'");
                 }
-
-                invoiceRequest.SequenceModel = modelSeqCode ?? "46";
-
-                // Filial
-                if (!string.IsNullOrEmpty(linha.Filial))
-                {
-                    invoiceRequest.BPL_IDAssignedToInvoice = linha.Filial;
-                }
-
-                if(!string.IsNullOrEmpty(linha.TipoTributacao))
-                {
-                    invoiceRequest.U_SKILL_TipTrib = linha.TipoTributacao;
-                }
-                // Observações
-                if (!string.IsNullOrEmpty(linha.ObservacaoNF))
-                {
-                    invoiceRequest.OpeningRemarks = linha.ObservacaoNF;
-                }
-                else
-                {
-                    invoiceRequest.OpeningRemarks = "BANCO XXXX";
-                }
-
-                // Condição de pagamento
-                if (!string.IsNullOrEmpty(linha.CondicaoPagamento))
-                {
-                    try
-                    {
-                        invoiceRequest.PaymentGroupCode = Convert.ToInt32(linha.CondicaoPagamento);
-                    }
-                    catch
-                    {
-                        invoiceRequest.PaymentGroupCode = -1;
-                    }
-                }
-
-                // Sequência do documento
-                if (!string.IsNullOrEmpty(linha.CodSeq))
-                {
-                    try
-                    {
-                        invoiceRequest.SequenceCode = Convert.ToInt32(linha.CodSeq);
-                    }
-                    catch { }
-                }
-
-                // Linha do documento
-                var documentLine = new ServiceLayerInvoiceClient.InvoiceDocumentLine
-                {
-                    ItemCode = linha.CodigoItem,
-                    Quantity = 1,
-                    UnitPrice = linha.Valor
-                };
-
-                // Código de imposto
-                if (!string.IsNullOrEmpty(linha.CodigoImposto))
-                {
-                    documentLine.TaxCode = linha.CodigoImposto;
-                }
-
-                // Utilização
-                if (!string.IsNullOrEmpty(linha.Utilizacao))
-                {
-                    try
-                    {
-                        documentLine.Usage = Convert.ToInt32(linha.Utilizacao);
-                    }
-                    catch { }
-                }
-
-                invoiceRequest.DocumentLines.Add(documentLine);
-                // Criar via Service Layer
-                var invoiceResponse = _invoiceClient.CreateInvoice(invoiceRequest);
-
-                resultado.Sucesso = true;
-                resultado.DocEntry = invoiceResponse.DocEntry;
-                resultado.DocNum = invoiceResponse.DocNum;
-                resultado.Mensagem = $"NFS-e criada - DocNum: {invoiceResponse.DocNum}";
             }
             catch (ServiceLayerInvoiceClient.ServiceLayerException ex)
             {
@@ -390,7 +603,6 @@ namespace ItTech.Tool.AddonNFS.Controllers
             {
                 resultado.Sucesso = false;
                 resultado.Mensagem = $"Erro na linha {linha.NumeroLinha}: {ex.Message}";
-
                 if (ex.InnerException != null)
                 {
                     resultado.Mensagem += $" | {ex.InnerException.Message}";
@@ -399,6 +611,7 @@ namespace ItTech.Tool.AddonNFS.Controllers
 
             return resultado;
         }
+
 
         /// <summary>
         /// Atualiza o status de uma linha após o processamento
@@ -531,6 +744,78 @@ namespace ItTech.Tool.AddonNFS.Controllers
         }
 
         #endregion
+
+        private ResultadoProcessamento CriarNotaFiscalEntrada(LinhaImportacao linha, DateTime dataLancamento, DateTime dataDocumento, ResultadoProcessamento resultado)
+        {
+            // Reutilizamos o mesmo objeto InvoiceRequest
+            var requestData = new ServiceLayerInvoiceClient.InvoiceRequest
+            {
+                CardCode = linha.CodigoCliente, // No caso de NFE, este seria o código do Fornecedor
+                DocDate = dataDocumento,
+                BPL_IDAssignedToInvoice = linha.Filial,
+                OpeningRemarks = linha.ObservacaoNF ?? "Gerado via Add-on de Lote",
+                PaymentGroupCode = Convert.ToInt32(linha.CondicaoPagamento),
+                SequenceCode = Convert.ToInt32(linha.CodSeq),
+                DocumentLines = new List<ServiceLayerInvoiceClient.InvoiceDocumentLine>
+        {
+            new ServiceLayerInvoiceClient.InvoiceDocumentLine
+            {
+                ItemCode = linha.CodigoItem,
+                Quantity = 1,
+                UnitPrice = linha.Valor,
+                TaxCode = linha.CodigoImposto
+            }
+        }
+            };
+
+            // Chamamos o novo método específico para criar NF de Entrada
+            var response = _invoiceClient.CreatePurchaseInvoice(requestData);
+
+            resultado.Sucesso = true;
+            resultado.DocEntry = response.DocEntry;
+            resultado.DocNum = response.DocNum;
+            resultado.Mensagem = $"NF de Entrada criada com sucesso - DocNum: {response.DocNum}";
+
+            return resultado;
+        }
+
+
+        private ResultadoProcessamento CriarEntrega(LinhaImportacao linha, DateTime dataLancamento, DateTime dataDocumento, ResultadoProcessamento resultado)
+        {
+            // Montamos o mesmo objeto InvoiceRequest que já usamos
+            var requestData = new ServiceLayerInvoiceClient.InvoiceRequest
+            {
+                CardCode = linha.CodigoCliente,
+                DocDate = dataDocumento,
+                BPL_IDAssignedToInvoice = linha.Filial,
+                OpeningRemarks = linha.ObservacaoNF ?? "Gerado via Add-on",
+                PaymentGroupCode = Convert.ToInt32(linha.CondicaoPagamento),
+                SequenceCode = Convert.ToInt32(linha.CodSeq),
+                DocumentLines = new List<ServiceLayerInvoiceClient.InvoiceDocumentLine>
+        {
+            new ServiceLayerInvoiceClient.InvoiceDocumentLine
+            {
+                ItemCode = linha.CodigoItem,
+                Quantity = 1,
+                UnitPrice = linha.Valor,
+                TaxCode = linha.CodigoImposto
+            }
+        }
+            };
+
+            // Chamamos o método genérico, passando o endpoint de Entregas
+            //var response = Task.Run(async () => await _invoiceClient._PostDocumentAsync("/b1s/v1/DeliveryNotes", requestData)).Result;
+            var response = _invoiceClient.CreateDeliveryNote(requestData);
+
+
+            resultado.Sucesso = true;
+            resultado.DocEntry = response.DocEntry;
+            resultado.DocNum = response.DocNum;
+            resultado.Mensagem = $"Entrega criada - DocNum: {response.DocNum}";
+
+            return resultado;
+        }
+
 
         #region Métodos de Validação
 

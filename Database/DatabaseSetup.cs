@@ -126,6 +126,12 @@ namespace ItTech.Tool.AddonNFS.Database
                 {"F", "Falha"}
             });
 
+            AddValidValues("@IT_GRUPO_LOTE", "TipoDoc", new string[,] {
+                 {"NFS", "Nota Fiscal de Saída"},
+                 {"ENT", "Entrega"},
+                 {"NFE", "Nota Fiscal de Entrada"}
+            });
+
             AddValidValues("@IT_LINHA_LOTE", "Status", new string[,] {
                 {"P", "Pendente"},
                 {"R", "Processando"},
