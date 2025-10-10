@@ -44,6 +44,7 @@ namespace ItTech.Tool.AddonNFS.Forms
         private Button BtnProcessar;
         private Button BtnCancelar;
         private Matrix MatrixArquivo;
+        private ComboBox cmbTipoDoc;
 
         #endregion
 
@@ -93,17 +94,21 @@ namespace ItTech.Tool.AddonNFS.Forms
             this.BtnProcessar = ((SAPbouiCOM.Button)(this.GetItem("btnProc").Specific));
             this.BtnCancelar = ((SAPbouiCOM.Button)(this.GetItem("btnCancel").Specific));
             this.MatrixArquivo = ((SAPbouiCOM.Matrix)(this.GetItem("mtxArq").Specific));
-            //   Eventos
+            this.cmbTipoDoc = ((SAPbouiCOM.ComboBox)(this.GetItem("cmbTipoDoc").Specific));
+
+            //    Eventos
             this.BtnAbrir.ClickBefore += this.BtnAbrir_ClickBefore;
             this.BtnDescarregar.ClickBefore += this.BtnDescarregar_ClickBefore;
             this.BtnValidar.ClickBefore += this.BtnValidar_ClickBefore;
             this.BtnVoltar.ClickBefore += this.BtnVoltar_ClickBefore;
             this.BtnProcessar.ClickBefore += this.BtnProcessar_ClickBefore;
             this.BtnCancelar.ClickBefore += this.BtnCancelar_ClickBefore;
-            //   Eventos de validação em tempo real
+            //    Eventos de validação em tempo real
             this.TxtNome.LostFocusAfter += this.TxtNome_LostFocusAfter;
             this.TxtDocDate.LostFocusAfter += this.TxtDocDate_LostFocusAfter;
             this.TxtDueDate.LostFocusAfter += this.TxtDueDate_LostFocusAfter;
+            this.ComboBox0 = ((SAPbouiCOM.ComboBox)(this.GetItem("cmbTipoDoc").Specific));
+            this.StaticText0 = ((SAPbouiCOM.StaticText)(this.GetItem("lblTipoDoc").Specific));
             this.OnCustomInitialize();
 
         }
@@ -121,6 +126,12 @@ namespace ItTech.Tool.AddonNFS.Forms
             {
                 _grupoController = new GrupoLoteController((SAPbobsCOM.Company)Application.SBO_Application.Company.GetDICompany());
                 _importController = new ImportacaoController((SAPbobsCOM.Company)Application.SBO_Application.Company.GetDICompany());
+
+                cmbTipoDoc.ValidValues.Add("-", "Selecione");
+                cmbTipoDoc.ValidValues.Add("NFS", "Nota Fiscal de Saída");
+                cmbTipoDoc.ValidValues.Add("ENT", "Entrega");
+                cmbTipoDoc.ValidValues.Add("NFE", "Nota Fiscal de Entrada");
+                cmbTipoDoc.Select(0, BoSearchKey.psk_Index);
 
                 // Criar DataTable para arquivos
                 if (!DataTableExists("dtArquivo"))
@@ -738,7 +749,8 @@ namespace ItTech.Tool.AddonNFS.Forms
                         DataDocumento = DateTime.ParseExact(TxtDocDate.Value, "yyyyMMdd", null),
                         NomeArquivo = Path.GetFileName(_caminhoArquivoTemp),
                         CaminhoArquivo = _caminhoArquivoTemp,
-                        Status = StatusGrupo.Novo
+                        Status = StatusGrupo.Novo,
+                        TipoDocumento = cmbTipoDoc.Selected.Value
                     };
 
                     _grupoCode = _grupoController.CriarGrupo(novoGrupo);
@@ -991,5 +1003,8 @@ namespace ItTech.Tool.AddonNFS.Forms
         }
 
         #endregion
+
+        private ComboBox ComboBox0;
+        private StaticText StaticText0;
     }
 }

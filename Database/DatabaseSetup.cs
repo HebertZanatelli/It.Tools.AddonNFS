@@ -82,6 +82,7 @@ namespace ItTech.Tool.AddonNFS.Database
         {
             // Campos da tabela IT_GRUPO_LOTE
             CreateField("@IT_GRUPO_LOTE", "Nome", "Nome do Grupo", BoFieldTypes.db_Alpha, 100);
+            CreateField("@IT_GRUPO_LOTE", "TipoDoc", "Tipo de Documento", BoFieldTypes.db_Alpha, 10);
             CreateField("@IT_GRUPO_LOTE", "DataLancamento", "Data de Lançamento", BoFieldTypes.db_Date);
             CreateField("@IT_GRUPO_LOTE", "DataDocumento", "Data do Documento", BoFieldTypes.db_Date);
             CreateField("@IT_GRUPO_LOTE", "NomeArquivo", "Nome do Arquivo", BoFieldTypes.db_Alpha, 254);
