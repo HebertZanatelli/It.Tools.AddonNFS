@@ -25,6 +25,8 @@ namespace ItTech.Tool.AddonNFS.Models
         public string NomeArquivo { get; set; }
         public string CaminhoArquivo { get; set; }
 
+        public string TipoDocumento { get; set; }
+
         // Status e Controle
         public StatusGrupo Status { get; set; }
         public int TotalLinhas { get; set; }

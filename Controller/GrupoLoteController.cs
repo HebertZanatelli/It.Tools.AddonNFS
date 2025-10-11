@@ -42,6 +42,7 @@ namespace ItTech.Tool.AddonNFS.Controllers
                 userTable.UserFields.Fields.Item("U_TotalLinhas").Value = 0;
                 userTable.UserFields.Fields.Item("U_LinhasProcessadas").Value = 0;
                 userTable.UserFields.Fields.Item("U_LinhasErro").Value = 0;
+                userTable.UserFields.Fields.Item("U_TipoDoc").Value = grupo.TipoDocumento;
 
                 userTable.UserFields.Fields.Item("U_DataCriacao").Value = grupo.DataLancamento; // ou DateTime.Now.Date;
                 userTable.UserFields.Fields.Item("U_HoraCriacao").Value = grupo.DataLancamento; // ou DateTime.Now;
@@ -173,7 +174,8 @@ namespace ItTech.Tool.AddonNFS.Controllers
                         ""U_TotalLinhas"",
                         ""U_LinhasProcessadas"",
                         ""U_LinhasErro"",
-                        ""U_DataCriacao""
+                        ""U_DataCriacao"",
+                        ""U_TipoDoc""
                     FROM ""@IT_GRUPO_LOTE""
                     ORDER BY ""Code"" DESC";
 
@@ -193,6 +195,7 @@ namespace ItTech.Tool.AddonNFS.Controllers
                         DataLancamento = (DateTime)oRecordset.Fields.Item("U_DataLancamento").Value,
                         DataDocumento = (DateTime)oRecordset.Fields.Item("U_DataDocumento").Value,
                         NomeArquivo = oRecordset.Fields.Item("U_NomeArquivo").Value.ToString(),
+                        TipoDocumento = oRecordset.Fields.Item("U_TipoDoc").Value?.ToString() ?? "",
                         Status = ConverterStatus(oRecordset.Fields.Item("U_Status").Value.ToString()),
                         // ✅ USAR os nomes corretos da classe
                         TotalLinhas = totalLinhas,

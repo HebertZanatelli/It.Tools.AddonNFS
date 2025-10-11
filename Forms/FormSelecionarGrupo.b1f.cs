@@ -27,6 +27,8 @@ namespace ItTech.Tool.AddonNFS.Forms
         private SAPbouiCOM.Button BtnAbrir;
         private SAPbouiCOM.Matrix Matrix;
         private SAPbouiCOM.StaticText StaticText0;
+        
+
         // NOVO - Campos para detectar duplo clique
         private DateTime _ultimoClique = DateTime.MinValue;
         private int _ultimaLinhaClicada = -1;
@@ -51,6 +53,7 @@ namespace ItTech.Tool.AddonNFS.Forms
             this.BtnAbrir = ((SAPbouiCOM.Button)(this.GetItem("btnAbrir").Specific));
             this.Matrix = ((SAPbouiCOM.Matrix)(this.GetItem("oMatrix").Specific));
             this.StaticText0 = ((SAPbouiCOM.StaticText)(this.GetItem("Item_1").Specific));
+            
 
             // Eventos dos botões
             this.BtnNovo.ClickBefore += new SAPbouiCOM._IButtonEvents_ClickBeforeEventHandler(this.BtnNovo_ClickBefore);
@@ -135,7 +138,10 @@ namespace ItTech.Tool.AddonNFS.Forms
                     dt.Columns.Add("Total", BoFieldsType.ft_Integer);
                     dt.Columns.Add("Proc", BoFieldsType.ft_Integer);
                     dt.Columns.Add("Erro", BoFieldsType.ft_Integer);
+                    dt.Columns.Add("TipoDoc", BoFieldsType.ft_AlphaNumeric, 50);
                 }
+
+           
 
                 ConfigurarMatrix();
                 CarregarGrupos();
@@ -165,6 +171,7 @@ namespace ItTech.Tool.AddonNFS.Forms
                 Matrix.Columns.Item("Total").DataBind.Bind("dtGrupos", "Total");
                 Matrix.Columns.Item("Proc").DataBind.Bind("dtGrupos", "Proc");
                 Matrix.Columns.Item("Erro").DataBind.Bind("dtGrupos", "Erro");
+                Matrix.Columns.Item("TipoDoc").DataBind.Bind("dtGrupos", "TipoDoc");
 
 
             }
@@ -204,6 +211,7 @@ namespace ItTech.Tool.AddonNFS.Forms
                     dt.SetValue("Total", i, g.TotalLinhas);
                     dt.SetValue("Proc", i, g.LinhasProcessadas);
                     dt.SetValue("Erro", i, g.LinhasErro);
+                    dt.SetValue("TipoDoc", i, ObterDescricaoTipoDoc(g.TipoDocumento));
                 }
 
                 Matrix.Clear();
@@ -687,6 +695,17 @@ namespace ItTech.Tool.AddonNFS.Forms
                 case StatusGrupo.ProcessadoParcial: return "Processado Parcial";
                 case StatusGrupo.Erro: return "Erro";
                 default: return "Desconhecido";
+            }
+        }
+
+        private string ObterDescricaoTipoDoc(string tipo)
+        {
+            switch (tipo)
+            {
+                case "NFS": return "NF Saída";
+                case "ENT": return "Entrega";
+                case "NFE": return "NF Entrada";
+                default: return "Não Definido";
             }
         }
 

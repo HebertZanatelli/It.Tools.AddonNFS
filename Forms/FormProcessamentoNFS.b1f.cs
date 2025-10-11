@@ -509,9 +509,14 @@ namespace ItTech.Tool.AddonNFS.Forms
 
                     progress.Atualizar(progresso, $"Processando {processadas + 1} a {i + lote.Count} de {total}...");
 
+                    //var resultados = await Task.Run(() =>
+                    //    _processamentoController.ProcessarLinhas(
+                    //        _grupo.Code, lote, _grupo.DataLancamento, _grupo.DataDocumento
+                    //    )
+                    //);
                     var resultados = await Task.Run(() =>
                         _processamentoController.ProcessarLinhas(
-                            _grupo.Code, lote, _grupo.DataLancamento, _grupo.DataDocumento
+                            _grupo, lote
                         )
                     );
 
@@ -1094,11 +1099,11 @@ namespace ItTech.Tool.AddonNFS.Forms
                 _cancellationTokenSource?.Dispose();
                 _cancellationTokenSource = null;
 
-                // Desconectar service layer
-                if (_serviceLayerClient != null)
-                {
-                    _serviceLayerClient.DisconnectAsync(CancellationToken.None).Wait(1000);
-                }
+                //// Desconectar service layer
+                //if (_serviceLayerClient != null)
+                //{
+                //    _serviceLayerClient.DisconnectAsync(CancellationToken.None).Wait(1000);
+                //}
 
                 // Limpar DataTable
                 var dt = GetDataTable();
