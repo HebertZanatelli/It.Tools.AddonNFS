@@ -42,6 +42,7 @@ namespace ItTech.Tool.AddonNFS.Controllers
                 userTable.UserFields.Fields.Item("U_TotalLinhas").Value = 0;
                 userTable.UserFields.Fields.Item("U_LinhasProcessadas").Value = 0;
                 userTable.UserFields.Fields.Item("U_LinhasErro").Value = 0;
+                userTable.UserFields.Fields.Item("U_TipoDoc").Value = grupo.TipoDocumento;
 
                 userTable.UserFields.Fields.Item("U_DataCriacao").Value = grupo.DataLancamento; // ou DateTime.Now.Date;
                 userTable.UserFields.Fields.Item("U_HoraCriacao").Value = grupo.DataLancamento; // ou DateTime.Now;

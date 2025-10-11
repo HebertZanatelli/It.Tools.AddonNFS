@@ -103,12 +103,14 @@ namespace ItTech.Tool.AddonNFS.Forms
             this.BtnVoltar.ClickBefore += this.BtnVoltar_ClickBefore;
             this.BtnProcessar.ClickBefore += this.BtnProcessar_ClickBefore;
             this.BtnCancelar.ClickBefore += this.BtnCancelar_ClickBefore;
+            this.cmbTipoDoc.ComboSelectAfter += this.CmbTipoDoc_ComboSelectAfter;
+
             //    Eventos de validação em tempo real
             this.TxtNome.LostFocusAfter += this.TxtNome_LostFocusAfter;
             this.TxtDocDate.LostFocusAfter += this.TxtDocDate_LostFocusAfter;
             this.TxtDueDate.LostFocusAfter += this.TxtDueDate_LostFocusAfter;
-            this.ComboBox0 = ((SAPbouiCOM.ComboBox)(this.GetItem("cmbTipoDoc").Specific));
-            this.StaticText0 = ((SAPbouiCOM.StaticText)(this.GetItem("lblTipoDoc").Specific));
+
+            
             this.OnCustomInitialize();
 
         }
@@ -601,6 +603,15 @@ namespace ItTech.Tool.AddonNFS.Forms
 
         #region Métodos Auxiliares
 
+        /// <summary>
+        /// Evento disparado após o usuário selecionar um item no ComboBox de Tipo de Documento.
+        /// A única responsabilidade deste método é solicitar a reavaliação da interface.
+        /// </summary>
+        private void CmbTipoDoc_ComboSelectAfter(object sboObject, SBOItemEventArg pVal)
+        {
+            AtualizarInterfaceContextual();
+        }
+
         private bool ValidarFormulario(bool mostrarMensagens)
         {
             // Nome do grupo
@@ -613,6 +624,19 @@ namespace ItTech.Tool.AddonNFS.Forms
                 }
                 return false;
             }
+
+            //Validação Tipo de Documento
+            if (string.IsNullOrEmpty(cmbTipoDoc.Value) || cmbTipoDoc.Value.Trim() == "-")
+            {
+                if (mostrarMensagens)
+                {
+                    Application.SBO_Application.MessageBox("Selecione um Tipo de Documento válido para continuar.", 1, "Ok", "", "");
+                    // Opcional: Focar no ComboBox para guiar o usuário
+                    cmbTipoDoc.Item.Click(BoCellClickType.ct_Regular);
+                }
+                return false;
+            }
+
 
             // Datas
             if (string.IsNullOrWhiteSpace(TxtDueDate.Value) || string.IsNullOrWhiteSpace(TxtDocDate.Value))
@@ -1004,7 +1028,6 @@ namespace ItTech.Tool.AddonNFS.Forms
 
         #endregion
 
-        private ComboBox ComboBox0;
-        private StaticText StaticText0;
+
     }
 }
