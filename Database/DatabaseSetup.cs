@@ -93,6 +93,7 @@ namespace ItTech.Tool.AddonNFS.Database
             CreateField("@IT_GRUPO_LOTE", "LinhasErro", "Linhas com Erro", BoFieldTypes.db_Numeric);
             CreateField("@IT_GRUPO_LOTE", "DataCriacao", "Data de Criação", BoFieldTypes.db_Date);
             CreateField("@IT_GRUPO_LOTE", "HoraCriacao", "Hora de Criação", BoFieldTypes.db_Date, 0, BoFldSubTypes.st_Time);
+            CreateField("@IT_GRUPO_LOTE", "CaminhoPDF", "Caminho para Salvar PDF", BoFieldTypes.db_Memo);
 
             // Campos da tabela IT_LINHA_LOTE
             CreateField("@IT_LINHA_LOTE", "GrupoCode", "Código do Grupo", BoFieldTypes.db_Alpha, 50);

@@ -131,28 +131,7 @@ namespace ItTech.Tool.AddonNFS.Services
                 throw ex.InnerException ?? ex;
             }
         }
-
-        // NOVO MÉTODO PÚBLICO para criar Entregas
-        //public InvoiceResponse CreateDeliveryNote(InvoiceRequest requestData)
-        //{
-        //    try
-        //    {
-        //        if (!IsConnected || ServiceLayerConnector.NeedsRenewal())
-        //        {
-        //            if (!Connect())
-        //            {
-        //                throw new ServiceLayerException("Falha ao conectar Service Layer", -1, null);
-        //            }
-        //        }
-
-        //        return Task.Run(async () => await _PostDocumentAsync("/b1s/v1/DeliveryNotes", requestData)).Result;
-        //    }
-        //    catch (AggregateException ex)
-        //    {
-        //        throw ex.InnerException ?? ex;
-        //    }
-        //}
-
+      
         public InvoiceResponse CreateDeliveryNote(InvoiceRequest requestData)
         {
             try

@@ -211,6 +211,7 @@
       <DependentUpon>FormSelecionarGrupo.b1f</DependentUpon>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Compile>
+    <Compile Include="Services\PdfGenerationService.cs" />
     <Compile Include="Services\ServiceLayerAuthService.cs" />
     <Compile Include="Services\ServiceLayerInvoiceClient.cs" />
     <Compile Include="Utils\ExcelExportService.cs" />

@@ -18,12 +18,14 @@ namespace ItTech.Tool.AddonNFS.Controllers
         private readonly Company _company;
         private readonly ServiceLayerInvoiceClient _invoiceClient;
         private readonly GrupoLoteController _grupoController;
+        private readonly PdfGenerationService _pdfGenerationService;
 
         public ProcessamentoNFSController(Company company, ServiceLayerInvoiceClient invoiceClient)
         {
             _company = company ?? throw new ArgumentNullException(nameof(company));
             _invoiceClient = invoiceClient ?? throw new ArgumentNullException(nameof(invoiceClient));
             _grupoController = new GrupoLoteController(company);
+            _pdfGenerationService = new PdfGenerationService(company);
         }
 
         #region Método Centralizado de Recálculo de Status
@@ -376,9 +378,10 @@ namespace ItTech.Tool.AddonNFS.Controllers
             // Lógica da Regra do Município
             var modelSeqCode = ObterModelPeloSeqCode(int.Parse(linha.CodSeq));
             var cnpjFilial = ObterCNPJ(int.Parse(linha.Filial));
-            string cnpjRegra = ConfigurationManager.AppSettings["CNPJRegra"];
+            string cnpjRegraSP = ConfigurationManager.AppSettings["CNPJRegraSP"];
+            string cnpjRegraMG = ConfigurationManager.AppSettings["CNPJRegraMG"];
 
-            if (modelSeqCode == "46" && cnpjFilial == cnpjRegra)
+            if (modelSeqCode == "46" && cnpjFilial == cnpjRegraSP)
             {
                 invoiceRequest.TaxExtension = new ServiceLayerInvoiceClient.InvoiceTaxExtension
                 {
@@ -386,6 +389,16 @@ namespace ItTech.Tool.AddonNFS.Controllers
                     County = "5215"
                 };
             }
+
+            if (modelSeqCode == "46" && cnpjFilial == cnpjRegraMG)
+            {
+                invoiceRequest.TaxExtension = new ServiceLayerInvoiceClient.InvoiceTaxExtension
+                {
+                    State = "MG",
+                    County = "1410"
+                };
+            }
+
 
             if (!string.IsNullOrEmpty(linha.TipoTributacao))
             {
@@ -439,134 +452,7 @@ namespace ItTech.Tool.AddonNFS.Controllers
 
             return resultado;
         }
-        //private ResultadoProcessamento ProcessarLinha(LinhaImportacao linha, DateTime dataLancamento, DateTime dataDocumento)
-        //{
-
-        //    ResultadoProcessamento resultado = new ResultadoProcessamento
-        //    {
-        //        CodigoLinha = linha.Code,
-        //        NumeroLinha = linha.NumeroLinha,
-        //        DataProcessamento = DateTime.Now
-        //    };
-
-        //    try
-        //    {
-        //        var invoiceRequest = new ServiceLayerInvoiceClient.InvoiceRequest
-        //        {
-        //            CardCode = linha.CodigoCliente,
-        //            DocDate = dataDocumento,
-        //            // DocDueDate = dataLancamento
-        //        };
-
-        //        var modelSeqCode = ObterModelPeloSeqCode(int.Parse(linha.CodSeq));
-        //        var cnpjFilial = ObterCNPJ(int.Parse(linha.Filial));
-        //        string cnpjRegra = ConfigurationManager.AppSettings["CNPJRegra"];
-
-
-
-        //        if (modelSeqCode == "46" && cnpjFilial == cnpjRegra) {
-        //            invoiceRequest.TaxExtension = new InvoiceTaxExtension();
-        //            invoiceRequest.TaxExtension.State = "SP";
-        //            invoiceRequest.TaxExtension.County = "5215";
-
-        //        }
-
-        //        invoiceRequest.SequenceModel = modelSeqCode ?? "46";
-
-        //        // Filial
-        //        if (!string.IsNullOrEmpty(linha.Filial))
-        //        {
-        //            invoiceRequest.BPL_IDAssignedToInvoice = linha.Filial;
-        //        }
-
-        //        if(!string.IsNullOrEmpty(linha.TipoTributacao))
-        //        {
-        //            invoiceRequest.U_SKILL_TipTrib = linha.TipoTributacao;
-        //        }
-        //        // Observações
-        //        if (!string.IsNullOrEmpty(linha.ObservacaoNF))
-        //        {
-        //            invoiceRequest.OpeningRemarks = linha.ObservacaoNF;
-        //        }
-        //        else
-        //        {
-        //            invoiceRequest.OpeningRemarks = "BANCO XXXX";
-        //        }
-
-        //        // Condição de pagamento
-        //        if (!string.IsNullOrEmpty(linha.CondicaoPagamento))
-        //        {
-        //            try
-        //            {
-        //                invoiceRequest.PaymentGroupCode = Convert.ToInt32(linha.CondicaoPagamento);
-        //            }
-        //            catch
-        //            {
-        //                invoiceRequest.PaymentGroupCode = -1;
-        //            }
-        //        }
-
-        //        // Sequência do documento
-        //        if (!string.IsNullOrEmpty(linha.CodSeq))
-        //        {
-        //            try
-        //            {
-        //                invoiceRequest.SequenceCode = Convert.ToInt32(linha.CodSeq);
-        //            }
-        //            catch { }
-        //        }
-
-        //        // Linha do documento
-        //        var documentLine = new ServiceLayerInvoiceClient.InvoiceDocumentLine
-        //        {
-        //            ItemCode = linha.CodigoItem,
-        //            Quantity = 1,
-        //            UnitPrice = linha.Valor
-        //        };
-
-        //        // Código de imposto
-        //        if (!string.IsNullOrEmpty(linha.CodigoImposto))
-        //        {
-        //            documentLine.TaxCode = linha.CodigoImposto;
-        //        }
-
-        //        // Utilização
-        //        if (!string.IsNullOrEmpty(linha.Utilizacao))
-        //        {
-        //            try
-        //            {
-        //                documentLine.Usage = Convert.ToInt32(linha.Utilizacao);
-        //            }
-        //            catch { }
-        //        }
-
-        //        invoiceRequest.DocumentLines.Add(documentLine);
-        //        // Criar via Service Layer
-        //        var invoiceResponse = _invoiceClient.CreateInvoice(invoiceRequest);
-
-        //        resultado.Sucesso = true;
-        //        resultado.DocEntry = invoiceResponse.DocEntry;
-        //        resultado.DocNum = invoiceResponse.DocNum;
-        //        resultado.Mensagem = $"NFS-e criada - DocNum: {invoiceResponse.DocNum}";
-        //    }
-        //    catch (ServiceLayerInvoiceClient.ServiceLayerException ex)
-        //    {
-        //        resultado.Sucesso = false;
-        //        resultado.Mensagem = $"[{ex.ServiceLayerCode}] {ex.Message}";
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        resultado.Sucesso = false;
-        //        resultado.Mensagem = $"Erro na linha {linha.NumeroLinha}: {ex.Message}";
-
-        //        if (ex.InnerException != null)
-        //        {
-        //            resultado.Mensagem += $" | {ex.InnerException.Message}";
-        //        }
-        //    }
-
-        //    return resultado;
-        //}
+        
 
         private ResultadoProcessamento ProcessarLinha(string tipoDocumento, LinhaImportacao linha, DateTime dataLancamento, DateTime dataDocumento)
         {
@@ -812,6 +698,28 @@ namespace ItTech.Tool.AddonNFS.Controllers
             resultado.DocEntry = response.DocEntry;
             resultado.DocNum = response.DocNum;
             resultado.Mensagem = $"Entrega criada - DocNum: {response.DocNum}";
+
+            try
+            {
+                // TODO: Futuramente, este caminho deve vir do objeto 'grupo' ou de uma configuração.
+                // Por enquanto, usamos um caminho fixo para o teste.
+                string pastaDestinoPDF = @"C:\TestePDF";
+
+                // Define um nome para o arquivo (ex: ENTREGA_12345_C0001.pdf)
+                string nomeArquivo = $"ENTREGA_{response.DocNum}_{linha.CodigoCliente}";
+
+                // Chama o serviço de geração de PDF que analisamos
+                string caminhoPdf = _pdfGenerationService.GerarPdfDeEntrega(response.DocEntry, pastaDestinoPDF, nomeArquivo);
+
+                // Adiciona a informação de sucesso à mensagem principal
+                resultado.Mensagem += $" | PDF salvo.";
+            }
+            catch (Exception exPdf)
+            {
+                // Se a geração do PDF falhar, não paramos o processo.
+                // Apenas adicionamos um aviso à mensagem de resultado.
+                resultado.Mensagem += $" [AVISO: Falha ao gerar PDF: {exPdf.Message}]";
+            }
 
             return resultado;
         }

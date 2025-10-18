@@ -45,6 +45,9 @@ namespace ItTech.Tool.AddonNFS.Forms
         private Button BtnCancelar;
         private Matrix MatrixArquivo;
         private ComboBox cmbTipoDoc;
+        private EditText txtPathPDF;
+        private Button btnPath;
+        private StaticText lblPathPDF;
 
         #endregion
 
@@ -95,8 +98,11 @@ namespace ItTech.Tool.AddonNFS.Forms
             this.BtnCancelar = ((SAPbouiCOM.Button)(this.GetItem("btnCancel").Specific));
             this.MatrixArquivo = ((SAPbouiCOM.Matrix)(this.GetItem("mtxArq").Specific));
             this.cmbTipoDoc = ((SAPbouiCOM.ComboBox)(this.GetItem("cmbTipoDoc").Specific));
+            this.txtPathPDF = ((SAPbouiCOM.EditText)(this.GetItem("txtPathPDF").Specific));
+            this.btnPath = ((SAPbouiCOM.Button)(this.GetItem("btnPath").Specific));
+            this.lblPathPDF = ((SAPbouiCOM.StaticText)(this.GetItem("lblPathPDF").Specific)); 
 
-            //    Eventos
+            //     Eventos
             this.BtnAbrir.ClickBefore += this.BtnAbrir_ClickBefore;
             this.BtnDescarregar.ClickBefore += this.BtnDescarregar_ClickBefore;
             this.BtnValidar.ClickBefore += this.BtnValidar_ClickBefore;
@@ -104,13 +110,13 @@ namespace ItTech.Tool.AddonNFS.Forms
             this.BtnProcessar.ClickBefore += this.BtnProcessar_ClickBefore;
             this.BtnCancelar.ClickBefore += this.BtnCancelar_ClickBefore;
             this.cmbTipoDoc.ComboSelectAfter += this.CmbTipoDoc_ComboSelectAfter;
+            this.btnPath.ClickBefore += new SAPbouiCOM._IButtonEvents_ClickBeforeEventHandler(this.BtnPath_ClickBefore);
 
-            //    Eventos de validação em tempo real
+            //     Eventos de validação em tempo real
             this.TxtNome.LostFocusAfter += this.TxtNome_LostFocusAfter;
             this.TxtDocDate.LostFocusAfter += this.TxtDocDate_LostFocusAfter;
             this.TxtDueDate.LostFocusAfter += this.TxtDueDate_LostFocusAfter;
-
-            
+           
             this.OnCustomInitialize();
 
         }
@@ -134,6 +140,8 @@ namespace ItTech.Tool.AddonNFS.Forms
                 cmbTipoDoc.ValidValues.Add("ENT", "Entrega");
                 cmbTipoDoc.ValidValues.Add("NFE", "Nota Fiscal de Entrada");
                 cmbTipoDoc.Select(0, BoSearchKey.psk_Index);
+                AtualizarVisibilidadeControlesPDF();
+
 
                 // Criar DataTable para arquivos
                 if (!DataTableExists("dtArquivo"))
@@ -159,6 +167,8 @@ namespace ItTech.Tool.AddonNFS.Forms
                 }
 
                 AtualizarInterfaceContextual();
+
+
             }
             catch (Exception ex)
             {
@@ -610,6 +620,7 @@ namespace ItTech.Tool.AddonNFS.Forms
         private void CmbTipoDoc_ComboSelectAfter(object sboObject, SBOItemEventArg pVal)
         {
             AtualizarInterfaceContextual();
+            AtualizarVisibilidadeControlesPDF();
         }
 
         private bool ValidarFormulario(bool mostrarMensagens)
@@ -774,7 +785,8 @@ namespace ItTech.Tool.AddonNFS.Forms
                         NomeArquivo = Path.GetFileName(_caminhoArquivoTemp),
                         CaminhoArquivo = _caminhoArquivoTemp,
                         Status = StatusGrupo.Novo,
-                        TipoDocumento = cmbTipoDoc.Selected.Value
+                        TipoDocumento = cmbTipoDoc.Selected.Value,
+                        CaminhoPDF = txtPathPDF.Value.Trim()
                     };
 
                     _grupoCode = _grupoController.CriarGrupo(novoGrupo);
@@ -797,6 +809,8 @@ namespace ItTech.Tool.AddonNFS.Forms
                 throw new Exception($"Erro ao salvar grupo: {ex.Message}", ex);
             }
         }
+
+
 
         private void AbrirProximaEtapa()
         {
@@ -1021,13 +1035,135 @@ namespace ItTech.Tool.AddonNFS.Forms
             }
         }
 
+        private void BtnPath_ClickBefore(object sboObject, SBOItemEventArg pVal, out bool BubbleEvent)
+        {
+            BubbleEvent = true;
+            try
+            {
+                btnPath.Item.Enabled = false; // Desabilita para evitar duplo clique
+                AbrirDialogoPastaAsync();
+            }
+            catch (Exception ex)
+            {
+                Application.SBO_Application.MessageBox($"Erro ao abrir diálogo: {ex.Message}");
+                btnPath.Item.Enabled = true;
+            }
+        }
+
+        private void AbrirDialogoPastaAsync()
+        {
+            Thread thread = new Thread(() =>
+            {
+                string pastaSelecionada = string.Empty;
+                try
+                {
+                    // Usamos FolderBrowserDialog em vez de OpenFileDialog
+                    using (var fbd = new System.Windows.Forms.FolderBrowserDialog())
+                    {
+                        fbd.Description = "Selecione a pasta de destino para os PDFs";
+                        // É necessário um Form "pai" para o diálogo funcionar corretamente no B1.
+                        // Criamos um form invisível para este propósito.
+                        using (var dummyForm = new System.Windows.Forms.Form { TopMost = true, WindowState = System.Windows.Forms.FormWindowState.Minimized, ShowInTaskbar = false })
+                        {
+                            dummyForm.Show();
+                            if (fbd.ShowDialog(dummyForm) == System.Windows.Forms.DialogResult.OK && !string.IsNullOrWhiteSpace(fbd.SelectedPath))
+                            {
+                                pastaSelecionada = fbd.SelectedPath;
+                            }
+                        }
+                    }
+
+                    // Se uma pasta foi selecionada, processa o resultado
+                    if (!string.IsNullOrEmpty(pastaSelecionada))
+                    {
+                        ProcessarPastaSelecionada(pastaSelecionada);
+                    }
+                    else
+                    {
+                        // Se o usuário cancelou, reabilita o botão na thread principal
+                        Application.SBO_Application.Forms.Item(this.UIAPIRawForm.UniqueID).Items.Item("btnPath").Enabled = true;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Erro no diálogo de pasta: {ex.Message}");
+                    // Em caso de erro, reabilita o botão na thread principal
+                    Application.SBO_Application.Forms.Item(this.UIAPIRawForm.UniqueID).Items.Item("btnPath").Enabled = true;
+                }
+            });
+
+            thread.SetApartmentState(ApartmentState.STA);
+            thread.IsBackground = true;
+            thread.Start();
+        }
+           
+        private void ProcessarPastaSelecionada(string pasta)
+        {
+            try
+            {
+                // A atualização da UI deve ser feita dentro de um bloco Freeze para performance e estabilidade
+                this.UIAPIRawForm.Freeze(true);
+
+                // Usamos um UserDataSource para vincular o valor ao campo de texto
+                if (!DataSourceExists("PathPDF"))
+                {
+                    this.UIAPIRawForm.DataSources.UserDataSources.Add("PathPDF", BoDataType.dt_LONG_TEXT, 254);
+                    this.txtPathPDF.DataBind.SetBound(true, "", "PathPDF");
+                }
+                this.UIAPIRawForm.DataSources.UserDataSources.Item("PathPDF").Value = pasta;
+            }
+            catch (Exception ex)
+            {
+                Application.SBO_Application.MessageBox($"Erro ao processar pasta selecionada: {ex.Message}");
+            }
+            finally
+            {
+                // Descongela a tela e reabilita o botão em um bloco finally para garantir a execução
+                this.UIAPIRawForm.Freeze(false);
+                this.UIAPIRawForm.Items.Item("btnPath").Enabled = true;
+            }
+        }
+
+        private void AtualizarVisibilidadeControlesPDF()
+        {
+            try
+            {
+                // Verifica se o valor selecionado no ComboBox é "ENT" (Entrega)
+                bool mostrarControles = (cmbTipoDoc.Selected != null && cmbTipoDoc.Selected.Value == "ENT");
+
+                // Obtém os itens pelo UniqueID que você definiu no editor de formulários
+                // Assumindo que o Label tem o UniqueID "lblPathPDF"
+                UIAPIRawForm.Items.Item("lblPathPDF").Visible = mostrarControles;
+                UIAPIRawForm.Items.Item("txtPathPDF").Visible = mostrarControles;
+                UIAPIRawForm.Items.Item("btnPath").Visible = mostrarControles;
+            }
+            catch (Exception ex)
+            {
+                // Ignora erros caso algum item não seja encontrado durante a inicialização
+                System.Diagnostics.Debug.WriteLine($"Erro ao atualizar visibilidade: {ex.Message}");
+            }
+        }
+
+        private bool DataSourceExists(string dataSourceId)
+        {
+            for (int i = 0; i < this.UIAPIRawForm.DataSources.UserDataSources.Count; i++)
+            {
+                if (this.UIAPIRawForm.DataSources.UserDataSources.Item(i).UID == dataSourceId)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         private void Form_ResizeAfter(SBOItemEventArg pVal)
         {
             // Ajustar layout se necessário
         }
 
+
         #endregion
 
-
+        
     }
 }
