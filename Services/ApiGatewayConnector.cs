@@ -179,9 +179,9 @@ namespace ItTech.Tool.AddonNFS.Services
             try
             {
                 apiUrl = ConfigurationManager.AppSettings["ApiGatewayUrl"];
-                user = ConfigurationManager.AppSettings["ApiGatewayUser"];
-                pass = ConfigurationManager.AppSettings["ApiGatewayPassword"];
-                // >>>>>>>>>>>>> CORREÇÃO 1 <<<<<<<<<<<<<<<<<<<
+                user = ConfigurationManager.AppSettings["SAP_Username"];
+                pass = ConfigurationManager.AppSettings["SAP_Password"];
+
                 companyDB = SAPbouiCOM.Framework.Application.SBO_Application.Company.DatabaseName; // DB da conexão atual do Addon
 
                 if (string.IsNullOrEmpty(apiUrl) || string.IsNullOrEmpty(user) || string.IsNullOrEmpty(pass) || string.IsNullOrEmpty(companyDB))

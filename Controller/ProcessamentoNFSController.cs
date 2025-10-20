@@ -5,7 +5,6 @@ using ItTech.Tool.AddonNFS.Models;
 using ItTech.Tool.AddonNFS.Services;
 using SAPbobsCOM;
 using System.Configuration;
-using System.Threading.Tasks;
 
 namespace ItTech.Tool.AddonNFS.Controllers
 {
@@ -35,41 +34,28 @@ namespace ItTech.Tool.AddonNFS.Controllers
         /// </summary>
         public List<ResultadoProcessamento> ProcessarLinhas(GrupoLote grupo, List<LinhaImportacao> linhas)
         {
-            List<ResultadoProcessamento> resultados = new List<ResultadoProcessamento>();
-
+            var resultados = new List<ResultadoProcessamento>();
             try
             {
                 _grupoController.AtualizarStatusGrupoSimples(grupo.Code, StatusGrupo.EmProcessamento);
 
-                for (int i = 0; i < linhas.Count; i++)
+                foreach (var linha in linhas)
                 {
-                    var linha = linhas[i];
-                    var resultado = ProcessarLinha(grupo.TipoDocumento, linha, grupo); // Chama o método síncrono
+                    var resultado = ProcessarLinha(grupo.TipoDocumento, linha, grupo);
                     resultados.Add(resultado);
 
-                    try
-                    {
-                        // Atualiza o status principal da linha no banco
-                        AtualizarStatusLinha(linha, resultado);
-                    }
-                    catch (Exception ex)
-                    {
-                        resultado.Mensagem += $" | Erro ao salvar status principal: {ex.Message}";
-                    }
+                    // A atualização do status do PDF já é feita dentro de ProcessarLinha.
+                    // Aqui atualizamos o status principal da linha.
+                    AtualizarStatusLinha(linha, resultado);
                 }
 
-                bool sucessoSalvamento = RecalcularStatusGrupoEficiente(grupo.Code);
-                if (!sucessoSalvamento)
-                {
-                    System.Diagnostics.Debug.WriteLine($"AVISO: Falha ao recalcular totais do grupo {grupo.Code}.");
-                }
+                RecalcularStatusGrupoEficiente(grupo.Code);
             }
             catch (Exception ex)
             {
                 try { _grupoController.AtualizarStatusGrupoSimples(grupo.Code, StatusGrupo.Erro); } catch { }
                 throw new Exception($"Erro no processamento: {ex.Message}", ex);
             }
-
             return resultados;
         }
 
@@ -78,26 +64,24 @@ namespace ItTech.Tool.AddonNFS.Controllers
         /// </summary>
         public List<ResultadoProcessamento> ProcessarLinhasOtimizado(GrupoLote grupo, List<LinhaImportacao> linhas)
         {
-            var tempoInicio = DateTime.Now;
-            List<ResultadoProcessamento> resultados = new List<ResultadoProcessamento>();
-
+            var resultados = new List<ResultadoProcessamento>();
             try
             {
                 var validacao = ValidarDadosSAP(linhas);
-                if (!validacao.Valida && validacao.Erros.Count > 0)
+                if (!validacao.Valida && validacao.Erros.Any())
                 {
                     throw new Exception($"Erros de validação: {string.Join(", ", validacao.Erros.Take(3))}");
                 }
 
                 _grupoController.AtualizarStatusGrupoSimples(grupo.Code, StatusGrupo.EmProcessamento);
 
-                for (int i = 0; i < linhas.Count; i++)
+                foreach (var linha in linhas)
                 {
-                    var linha = linhas[i];
-                    var resultado = ProcessarLinha(grupo.TipoDocumento, linha, grupo); // Chama o mesmo método síncrono
+                    // >>> CORREÇÃO APLICADA: Chama o mesmo método centralizado para garantir consistência.
+                    var resultado = ProcessarLinha(grupo.TipoDocumento, linha, grupo);
                     resultados.Add(resultado);
 
-                    // Apenas atualiza o objeto em memória por enquanto
+                    // Apenas atualiza o objeto em memória para o salvamento em lote posterior.
                     linha.Status = resultado.Sucesso ? StatusLinha.Sucesso : StatusLinha.Erro;
                     linha.DocNum = resultado.DocNum;
                     linha.DocEntry = resultado.DocEntry;
@@ -105,56 +89,39 @@ namespace ItTech.Tool.AddonNFS.Controllers
                     linha.Reprocessar = !resultado.Sucesso;
                 }
 
-                // Atualiza o status de todas as linhas processadas no banco de uma vez
                 AtualizarStatusLinhasEmLote(linhas, resultados);
                 RecalcularStatusGrupoEficiente(grupo.Code);
-
-                var tempoTotal = DateTime.Now - tempoInicio;
-                System.Diagnostics.Debug.WriteLine($"TOTAL OTIMIZADO: {tempoTotal.TotalSeconds:F1}s para {linhas.Count} linhas");
             }
             catch (Exception ex)
             {
                 try { _grupoController.AtualizarStatusGrupoSimples(grupo.Code, StatusGrupo.Erro); } catch { }
                 throw new Exception($"Erro no processamento otimizado: {ex.Message}", ex);
             }
-
             return resultados;
         }
 
-
         #endregion
 
-        #region Lógica de Processamento de Linha Única (Privado e Centralizado)
+        #region Lógica de Processamento de Linha Única (Centralizada)
 
         /// <summary>
         /// Processa uma única linha de forma síncrona. Ponto central da lógica.
         /// </summary>
         private ResultadoProcessamento ProcessarLinha(string tipoDocumento, LinhaImportacao linha, GrupoLote grupo)
         {
-            var resultado = new ResultadoProcessamento
-            {
-                CodigoLinha = linha.Code,
-                NumeroLinha = linha.NumeroLinha
-            };
-
+            var resultado = new ResultadoProcessamento { CodigoLinha = linha.Code, NumeroLinha = linha.NumeroLinha };
             try
             {
                 switch (tipoDocumento)
                 {
                     case "NFS":
-                        // Chama o método síncrono para criar a nota fiscal
                         return CriarNotaFiscalSaida(linha, grupo, resultado);
-
                     case "ENT":
-                        // Chama o método síncrono para criar a entrega (que agora inclui a geração do PDF)
                         return CriarEntrega(linha, grupo, resultado);
-
                     case "NFE":
-                        // Chama o método síncrono para criar a nota fiscal de entrada
                         return CriarNotaFiscalEntrada(linha, grupo, resultado);
-
                     default:
-                        throw new InvalidOperationException($"Tipo de documento desconhecido ou não informado: '{tipoDocumento}'");
+                        throw new InvalidOperationException($"Tipo de documento desconhecido: '{tipoDocumento}'");
                 }
             }
             catch (ServiceLayerInvoiceClient.ServiceLayerException ex)
@@ -165,49 +132,18 @@ namespace ItTech.Tool.AddonNFS.Controllers
             catch (Exception ex)
             {
                 resultado.Sucesso = false;
-                resultado.Mensagem = $"Erro na linha {linha.NumeroLinha}: {ex.Message}";
+                resultado.Mensagem = $"Erro: {ex.Message}";
                 if (ex.InnerException != null)
                 {
-                    resultado.Mensagem += $" | {ex.InnerException.Message}";
+                    resultado.Mensagem += $" | Detalhe: {ex.InnerException.Message}";
                 }
             }
-
             return resultado;
         }
 
         #endregion
 
-        #region Métodos de Criação de Documentos (Privados)
-
-        private ResultadoProcessamento CriarNotaFiscalSaida(LinhaImportacao linha, GrupoLote grupo, ResultadoProcessamento resultado)
-        {
-            // ... (A lógica de montar o invoiceRequest permanece a mesma)
-            var invoiceRequest = new ServiceLayerInvoiceClient.InvoiceRequest { /* ... preencher dados ... */ };
-            var invoiceResponse = _invoiceClient.CreateInvoice(invoiceRequest);
-
-            resultado.Sucesso = true;
-            resultado.DocEntry = invoiceResponse.DocEntry;
-            resultado.DocNum = invoiceResponse.DocNum;
-            resultado.Mensagem = $"NFS-e criada - DocNum: {invoiceResponse.DocNum}";
-
-            // PDF não se aplica a este tipo de documento, então não fazemos nada.
-            return resultado;
-        }
-
-        private ResultadoProcessamento CriarNotaFiscalEntrada(LinhaImportacao linha, GrupoLote grupo, ResultadoProcessamento resultado)
-        {
-            // ... (A lógica de montar o requestData permanece a mesma) ...
-            var requestData = new ServiceLayerInvoiceClient.InvoiceRequest { /* ... preencher dados ... */ };
-            var response = _invoiceClient.CreatePurchaseInvoice(requestData);
-
-            resultado.Sucesso = true;
-            resultado.DocEntry = response.DocEntry;
-            resultado.DocNum = response.DocNum;
-            resultado.Mensagem = $"NF de Entrada criada - DocNum: {response.DocNum}";
-
-            // PDF não se aplica a este tipo de documento.
-            return resultado;
-        }
+        #region Métodos de Criação de Documentos
 
         private ResultadoProcessamento CriarEntrega(LinhaImportacao linha, GrupoLote grupo, ResultadoProcessamento resultado)
         {
@@ -238,21 +174,20 @@ namespace ItTech.Tool.AddonNFS.Controllers
             resultado.DocNum = response.DocNum;
             resultado.Mensagem = $"Entrega criada - DocNum: {response.DocNum}";
 
-            // 2. Tenta gerar o PDF via API Gateway
+            // 2. Tenta gerar o PDF
             string pdfStatus = "N";
             string pdfMsg = "";
             try
             {
-                string layoutCode = ConfigurationManager.AppSettings["DeliveryNote_LayoutCode"];
-                string pastaDestino = grupo.CaminhoPDF;
+                if (string.IsNullOrWhiteSpace(grupo.CaminhoPDF))
+                {
+                    throw new Exception("Caminho para salvar PDF não configurado no grupo.");
+                }
+
                 string nomeArquivo = $"ENT_{linha.CodigoCliente}_{response.DocNum}_{grupo.DataDocumento:yyyyMMdd}";
 
-                // Chama a versão síncrona do serviço de PDF, que faz o bloqueio necessário
-                var pdfResult = _pdfGenerationService.GerarPdfDeEntrega(
-                    response.DocEntry,
-                    pastaDestino,
-                    nomeArquivo
-                );
+                // >>> CHAMADA SÍNCRONA (BLOQUEANTE) AO SERVIÇO DE PDF
+                var pdfResult = _pdfGenerationService.GerarPdfDeEntrega(response.DocEntry, grupo.CaminhoPDF, nomeArquivo);
 
                 if (pdfResult.Success)
                 {
@@ -265,7 +200,7 @@ namespace ItTech.Tool.AddonNFS.Controllers
                 {
                     pdfStatus = "E";
                     pdfMsg = pdfResult.Message;
-                    resultado.Mensagem += $" | PDF: Erro";
+                    resultado.Mensagem += " | PDF: Erro";
                     resultado.PdfGeradoComSucesso = false;
                     resultado.PdfMensagemErro = pdfMsg;
                 }
@@ -274,24 +209,104 @@ namespace ItTech.Tool.AddonNFS.Controllers
             {
                 pdfStatus = "E";
                 pdfMsg = pdfEx.Message;
-                resultado.Mensagem += $" | PDF: Exceção";
+                resultado.Mensagem += " | PDF: Exceção";
                 resultado.PdfGeradoComSucesso = false;
                 resultado.PdfMensagemErro = pdfMsg;
             }
             finally
             {
-                // 3. Atualiza o status do PDF no banco, independentemente do resultado
+                // 3. Atualiza o status do PDF no banco, aconteça o que acontecer.
                 AtualizarStatusPdfLinha(linha.Code, pdfStatus, pdfMsg);
                 linha.PdfStatus = pdfStatus;
                 linha.PdfMsg = pdfMsg;
             }
+            return resultado;
+        }
+
+        private ResultadoProcessamento CriarNotaFiscalSaida(LinhaImportacao linha, GrupoLote grupo, ResultadoProcessamento resultado)
+        {
+            var invoiceRequest = new ServiceLayerInvoiceClient.InvoiceRequest
+            {
+                CardCode = linha.CodigoCliente,
+                DocDate = grupo.DataDocumento,
+                BPL_IDAssignedToInvoice = linha.Filial,
+                U_SKILL_TipTrib = linha.TipoTributacao,
+                OpeningRemarks = linha.ObservacaoNF ?? "BANCO XXXX",
+                PaymentGroupCode = Convert.ToInt32(linha.CondicaoPagamento),
+                SequenceCode = Convert.ToInt32(linha.CodSeq),
+                DocumentLines = new List<ServiceLayerInvoiceClient.InvoiceDocumentLine>
+                {
+                    new ServiceLayerInvoiceClient.InvoiceDocumentLine
+                    {
+                        ItemCode = linha.CodigoItem,
+                        Quantity = 1,
+                        UnitPrice = linha.Valor,
+                        TaxCode = linha.CodigoImposto,
+                        Usage = Convert.ToInt32(linha.Utilizacao)
+                    }
+                }
+            };
+
+            // Lógica da Regra do Município
+            var modelSeqCode = ObterModelPeloSeqCode(int.Parse(linha.CodSeq));
+            var cnpjFilial = ObterCNPJ(int.Parse(linha.Filial));
+            string cnpjRegraSP = ConfigurationManager.AppSettings["CNPJRegraSP"];
+            string cnpjRegraMG = ConfigurationManager.AppSettings["CNPJRegraMG"];
+
+            if (modelSeqCode == "46" && cnpjFilial == cnpjRegraSP)
+            {
+                invoiceRequest.TaxExtension = new ServiceLayerInvoiceClient.InvoiceTaxExtension { State = "SP", County = "5215" };
+            }
+
+            if (modelSeqCode == "46" && cnpjFilial == cnpjRegraMG)
+            {
+                invoiceRequest.TaxExtension = new ServiceLayerInvoiceClient.InvoiceTaxExtension { State = "MG", County = "1410" };
+            }
+
+            var invoiceResponse = _invoiceClient.CreateInvoice(invoiceRequest);
+
+            resultado.Sucesso = true;
+            resultado.DocEntry = invoiceResponse.DocEntry;
+            resultado.DocNum = invoiceResponse.DocNum;
+            resultado.Mensagem = $"NFS-e criada - DocNum: {invoiceResponse.DocNum}";
+
+            return resultado;
+        }
+
+        private ResultadoProcessamento CriarNotaFiscalEntrada(LinhaImportacao linha, GrupoLote grupo, ResultadoProcessamento resultado)
+        {
+            var requestData = new ServiceLayerInvoiceClient.InvoiceRequest
+            {
+                CardCode = linha.CodigoCliente,
+                DocDate = grupo.DataDocumento,
+                BPL_IDAssignedToInvoice = linha.Filial,
+                OpeningRemarks = linha.ObservacaoNF ?? "Gerado via Add-on de Lote",
+                PaymentGroupCode = Convert.ToInt32(linha.CondicaoPagamento),
+                SequenceCode = Convert.ToInt32(linha.CodSeq),
+                DocumentLines = new List<ServiceLayerInvoiceClient.InvoiceDocumentLine>
+                {
+                    new ServiceLayerInvoiceClient.InvoiceDocumentLine
+                    {
+                        ItemCode = linha.CodigoItem,
+                        Quantity = 1,
+                        UnitPrice = linha.Valor,
+                        TaxCode = linha.CodigoImposto
+                    }
+                }
+            };
+            var response = _invoiceClient.CreatePurchaseInvoice(requestData);
+
+            resultado.Sucesso = true;
+            resultado.DocEntry = response.DocEntry;
+            resultado.DocNum = response.DocNum;
+            resultado.Mensagem = $"NF de Entrada criada - DocNum: {response.DocNum}";
 
             return resultado;
         }
 
         #endregion
 
-        #region Métodos de Atualização de Banco
+        #region Métodos de Atualização, Validação e Diagnóstico (Completos)
 
         private void AtualizarStatusPdfLinha(string linhaCode, string status, string mensagem)
         {
@@ -302,9 +317,7 @@ namespace ItTech.Tool.AddonNFS.Controllers
                 string msgSql = (mensagem ?? "").Replace("'", "''");
                 if (msgSql.Length > 1000) msgSql = msgSql.Substring(0, 1000);
 
-                string query = $@"UPDATE ""@IT_LINHA_LOTE""
-                                SET ""U_PdfStatus"" = '{status}', ""U_PdfMsg"" = '{msgSql}'
-                                WHERE ""Code"" = '{linhaCode}'";
+                string query = $@"UPDATE ""@IT_LINHA_LOTE"" SET ""U_PdfStatus"" = '{status}', ""U_PdfMsg"" = '{msgSql}' WHERE ""Code"" = '{linhaCode}'";
                 rs.DoQuery(query);
             }
             catch (Exception ex)
@@ -317,24 +330,9 @@ namespace ItTech.Tool.AddonNFS.Controllers
             }
         }
 
-        // Os métodos RecalcularStatusGrupoEficiente, AtualizarStatusLinha, AtualizarStatusLinhasEmLote,
-        // e todos os métodos de Validação permanecem os mesmos que você já tem.
-        // ... (Cole aqui os métodos existentes: RecalcularStatusGrupoEficiente, AtualizarStatusLinha,
-        //      AtualizarStatusLinhasEmLote, e toda a região #region Métodos de Validação) ...
-
-        #endregion
-
-        // INCLUA AQUI O RESTANTE DO CÓDIGO QUE VOCÊ JÁ POSSUI (RecalcularStatus, AtualizarStatusLinha, etc.)
-        // >>>>>>>>>>>>>>>>
-        #region Método Centralizado de Recálculo de Status
-
-        /// <summary>
-        /// Recalcula e atualiza status do grupo usando query SQL eficiente
-        /// </summary>
         private bool RecalcularStatusGrupoEficiente(string grupoCode)
         {
             Recordset oRecordset = null;
-
             try
             {
                 oRecordset = (Recordset)_company.GetBusinessObject(BoObjectTypes.BoRecordset);
@@ -350,8 +348,7 @@ namespace ItTech.Tool.AddonNFS.Controllers
 
                 oRecordset.DoQuery(queryCounts);
 
-                if (oRecordset.RecordCount == 0)
-                    return false;
+                if (oRecordset.RecordCount == 0) return false;
 
                 int totalLinhas = Convert.ToInt32(oRecordset.Fields.Item("Total").Value ?? 0);
                 int sucessos = Convert.ToInt32(oRecordset.Fields.Item("Sucessos").Value ?? 0);
@@ -377,8 +374,6 @@ namespace ItTech.Tool.AddonNFS.Controllers
                 if (oRecordset != null) System.Runtime.InteropServices.Marshal.ReleaseComObject(oRecordset);
             }
         }
-
-        #endregion
 
         private void AtualizarStatusLinha(LinhaImportacao linha, ResultadoProcessamento resultado)
         {
@@ -467,7 +462,6 @@ namespace ItTech.Tool.AddonNFS.Controllers
             }
         }
 
-        #region Métodos de Validação
         public ValidacaoImportacao ValidarDadosSAP(List<LinhaImportacao> linhas)
         {
             ValidacaoImportacao validacao = new ValidacaoImportacao();
@@ -477,15 +471,15 @@ namespace ItTech.Tool.AddonNFS.Controllers
             {
                 if (!string.IsNullOrEmpty(linha.CodigoCliente) && !clientesValidados.Contains(linha.CodigoCliente))
                 {
-                    if (!ValidarCliente(linha.CodigoCliente)) { validacao.AdicionarErro($"Cliente '{linha.CodigoCliente}' não encontrado no SAP"); }
+                    if (!ValidarCliente(linha.CodigoCliente)) { validacao.AdicionarErro($"Cliente '{linha.CodigoCliente}' não encontrado."); }
                     clientesValidados.Add(linha.CodigoCliente);
                 }
                 if (!string.IsNullOrEmpty(linha.CodigoItem) && !itensValidados.Contains(linha.CodigoItem))
                 {
-                    if (!ValidarItem(linha.CodigoItem)) { validacao.AdicionarErro($"Item '{linha.CodigoItem}' não encontrado no SAP"); }
+                    if (!ValidarItem(linha.CodigoItem)) { validacao.AdicionarErro($"Item '{linha.CodigoItem}' não encontrado."); }
                     itensValidados.Add(linha.CodigoItem);
                 }
-                if (linha.Valor <= 0) { validacao.AdicionarErro($"Linha {linha.NumeroLinha}: Valor deve ser maior que zero"); }
+                if (linha.Valor <= 0) { validacao.AdicionarErro($"Linha {linha.NumeroLinha}: Valor deve ser maior que zero."); }
             }
             return validacao;
         }
@@ -514,66 +508,40 @@ namespace ItTech.Tool.AddonNFS.Controllers
             finally { if (oItem != null) System.Runtime.InteropServices.Marshal.ReleaseComObject(oItem); }
         }
 
-        private bool ValidarUtilizacao(string usage)
+        private string ObterModelPeloSeqCode(int seqCode)
         {
-            Recordset oRecordset = null;
+            Recordset rs = null;
             try
             {
-                oRecordset = (Recordset)_company.GetBusinessObject(BoObjectTypes.BoRecordset);
-                oRecordset.DoQuery($@"SELECT ""ID"" FROM OUSG WHERE ""ID"" = '{usage}'");
-                return !oRecordset.EoF;
+                rs = (Recordset)_company.GetBusinessObject(BoObjectTypes.BoRecordset);
+                rs.DoQuery($"SELECT \"Model\" FROM NFN1 WHERE \"SeqCode\" = {seqCode}");
+                if (rs.RecordCount > 0) return rs.Fields.Item("Model").Value.ToString();
+                return string.Empty;
             }
-            catch { return false; }
-            finally { if (oRecordset != null) System.Runtime.InteropServices.Marshal.ReleaseComObject(oRecordset); }
+            catch { return string.Empty; }
+            finally { if (rs != null) System.Runtime.InteropServices.Marshal.ReleaseComObject(rs); }
         }
 
-        private bool ValidarCodigoImposto(string taxCode)
+        private string ObterCNPJ(int bplId)
         {
-            Recordset oRecordset = null;
+            Recordset rs = null;
             try
             {
-                oRecordset = (Recordset)_company.GetBusinessObject(BoObjectTypes.BoRecordset);
-                oRecordset.DoQuery($@"SELECT ""Code"" FROM OSTC WHERE ""Code"" = '{taxCode}'");
-                return !oRecordset.EoF;
+                rs = (Recordset)_company.GetBusinessObject(BoObjectTypes.BoRecordset);
+                rs.DoQuery($"SELECT \"TaxIdNum\" FROM OBPL WHERE \"BPLId\" = {bplId}");
+                if (rs.RecordCount > 0) return rs.Fields.Item("TaxIdNum").Value.ToString();
+                return string.Empty;
             }
-            catch { return false; }
-            finally { if (oRecordset != null) System.Runtime.InteropServices.Marshal.ReleaseComObject(oRecordset); }
+            catch { return string.Empty; }
+            finally { if (rs != null) System.Runtime.InteropServices.Marshal.ReleaseComObject(rs); }
         }
 
-        private bool ValidarSequenciaNF(string seqCode)
-        {
-            Recordset oRecordset = null;
-            try
-            {
-                oRecordset = (Recordset)_company.GetBusinessObject(BoObjectTypes.BoRecordset);
-                oRecordset.DoQuery($@"SELECT ""SeqCode"" FROM NFN1 WHERE ""SeqCode"" = '{seqCode}' AND ""ObjectCode"" = '13'");
-                return !oRecordset.EoF;
-            }
-            catch { return false; }
-            finally { if (oRecordset != null) System.Runtime.InteropServices.Marshal.ReleaseComObject(oRecordset); }
-        }
-
-        private bool ValidarCondicaoPagamento(string groupNum)
-        {
-            Recordset oRecordset = null;
-            try
-            {
-                oRecordset = (Recordset)_company.GetBusinessObject(BoObjectTypes.BoRecordset);
-                oRecordset.DoQuery($@"SELECT ""GroupNum"" FROM OCTG WHERE ""GroupNum"" = '{groupNum}'");
-                return !oRecordset.EoF;
-            }
-            catch { return false; }
-            finally { if (oRecordset != null) System.Runtime.InteropServices.Marshal.ReleaseComObject(oRecordset); }
-        }
-        #endregion
-
-        #region Métodos de Diagnóstico
         public bool CorrigirTotaisGrupo(string grupoCode)
         {
             try { return RecalcularStatusGrupoEficiente(grupoCode); }
             catch { return false; }
         }
         #endregion
-        // <<<<<<<<<<<<<<<<
     }
 }
+
