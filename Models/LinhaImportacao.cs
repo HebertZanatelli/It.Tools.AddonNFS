@@ -37,6 +37,9 @@ namespace ItTech.Tool.AddonNFS.Models
         public string MensagemErro { get; set; }
         public bool Reprocessar { get; set; }
         public DateTime? DataProcessamento { get; set; }
+        public string PdfStatus { get; set; } = "N"; // Valor inicial padrão
+        public string PdfMsg { get; set; }
+
 
         public LinhaImportacao()
         {

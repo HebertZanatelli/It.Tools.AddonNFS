@@ -19,6 +19,11 @@ namespace ItTech.Tool.AddonNFS.Models
         public string Mensagem { get; set; }
         public DateTime DataProcessamento { get; set; }
 
+        public bool PdfGeradoComSucesso { get; set; } = false; // Default é false
+        public string PdfMensagemErro { get; set; }
+        public string PdfCaminhoCompleto { get; set; } // Caminho onde foi salvo (se sucesso)
+
+
         public ResultadoProcessamento()
         {
             DataProcessamento = DateTime.Now;

@@ -509,16 +509,8 @@ namespace ItTech.Tool.AddonNFS.Forms
 
                     progress.Atualizar(progresso, $"Processando {processadas + 1} a {i + lote.Count} de {total}...");
 
-                    //var resultados = await Task.Run(() =>
-                    //    _processamentoController.ProcessarLinhas(
-                    //        _grupo.Code, lote, _grupo.DataLancamento, _grupo.DataDocumento
-                    //    )
-                    //);
-                    var resultados = await Task.Run(() =>
-                        _processamentoController.ProcessarLinhas(
-                            _grupo, lote
-                        )
-                    );
+                    
+                    var resultados = await _processamentoController.ProcessarLinhasAsync(_grupo, lote);
 
                     // Lógica de atualização inteligente
                     if (processadas < LIMITE_TEMPO_REAL)
