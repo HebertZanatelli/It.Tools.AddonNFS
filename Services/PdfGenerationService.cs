@@ -86,7 +86,8 @@ namespace ItTech.Tool.AddonNFS.Services
             try
             {
                 // 1. Garantir que a sessão com a API Gateway está ativa
-                await ApiGatewayConnector.EnsureApiGatewaySessionAsync();
+                await ApiGatewayConnector.EnsureSessionAsync();
+                
                 HttpClient apiClient = ApiGatewayConnector.Client;
 
                 if (apiClient == null)

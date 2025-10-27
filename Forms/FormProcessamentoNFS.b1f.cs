@@ -155,6 +155,7 @@ namespace ItTech.Tool.AddonNFS.Forms
                 dt.Columns.Add("Valor", BoFieldsType.ft_Float);
                 dt.Columns.Add("Mensagem", BoFieldsType.ft_AlphaNumeric, 254);
                 dt.Columns.Add("Code", BoFieldsType.ft_AlphaNumeric, 50);
+                dt.Columns.Add("PdfStatus", BoFieldsType.ft_AlphaNumeric, 50);
             }
             catch { /* DataTable já existe */ }
         }
@@ -170,6 +171,8 @@ namespace ItTech.Tool.AddonNFS.Forms
                         col.DataBind.Bind("dtResult", col.UniqueID);
                 }
                 oGrid.Columns.Item("#").DataBind.Bind("dtResult", "Linha");
+                oGrid.Columns.Item("PdfStatus").DataBind.Bind("dtResult", "PdfStatus");
+                oGrid.Columns.Item("PdfStatus").Width = 80;
 
                 // LinkedButtons
                 ConfigurarLinkedButton("CodCli", BoLinkedObject.lf_BusinessPartner);
@@ -200,7 +203,7 @@ namespace ItTech.Tool.AddonNFS.Forms
                         cboFiltro.ValidValues.Remove(i, BoSearchKey.psk_Index);
                     }
                 }
-
+                
                 // Adicionar novos valores
                 cboFiltro.ValidValues.Add("TODOS", "Mostrar Todos");
                 cboFiltro.ValidValues.Add("SUCESSO", "Com Sucesso");
@@ -387,6 +390,7 @@ namespace ItTech.Tool.AddonNFS.Forms
             dt.SetValue("Valor", i, Convert.ToDouble(linha.Valor));
             dt.SetValue("Mensagem", i, Truncar(linha.MensagemErro, 254));
             dt.SetValue("Code", i, linha.Code);
+            dt.SetValue("PdfStatus", i, ObterTextoStatusPdf(linha));
         }
 
         private string ObterTextoStatus(StatusLinha status)
@@ -633,6 +637,9 @@ namespace ItTech.Tool.AddonNFS.Forms
                             linha.MensagemErro = resultado.Mensagem;
                             linha.DocEntry = resultado.DocEntry;
                             linha.DocNum = resultado.DocNum;
+                            linha.PdfStatus = resultado.PdfGeradoComSucesso ? "S" : (resultado.Sucesso ? "E" : "N"); 
+                            linha.PdfMsg = resultado.PdfMensagemErro;
+                            dt.SetValue("PdfStatus", index, ObterTextoStatusPdf(linha)); 
                         }
                     }
                 }
@@ -665,7 +672,12 @@ namespace ItTech.Tool.AddonNFS.Forms
 
         #endregion
 
+
+
+
         #region Interface
+
+
 
         private void AtualizarInterface()
         {
@@ -1262,7 +1274,20 @@ namespace ItTech.Tool.AddonNFS.Forms
             }
         }
 
-        private List<LinhaImportacao> ObterLinhasSelecionadas()
+        private string ObterTextoStatusPdf(LinhaImportacao linha)
+        {
+            if (linha.GrupoCode != null && _grupo?.TipoDocumento != "ENT") return "N/A"; 
+            switch (linha.PdfStatus)
+            {
+                case "S": return "✓ PDF OK";
+                case "E": return $"✗ PDF Erro: {Truncar(linha.PdfMsg, 30)}";
+                case "N": return (linha.Status == StatusLinha.Sucesso) ? "○ PDF Pend." : "N/A"; 
+                default: return "N/A";
+            }
+        }
+
+
+            private List<LinhaImportacao> ObterLinhasSelecionadas()
         {
             var selecionadas = new List<LinhaImportacao>();
 
