@@ -5,8 +5,9 @@ using ItTech.Tool.AddonNFS.Models;
 using ItTech.Tool.AddonNFS.Services;
 using SAPbobsCOM;
 using System.Configuration;
+using ItTech.Tool.AddonNFS.Services;
 using System.Threading.Tasks;
-using static ItTech.Tool.AddonNFS.Services.ServiceLayerInvoiceClient;
+//using static ItTech.Tool.AddonNFS.Services.ServiceLayerInvoiceClient;
 
 namespace ItTech.Tool.AddonNFS.Controllers
 {
@@ -18,12 +19,14 @@ namespace ItTech.Tool.AddonNFS.Controllers
         private readonly Company _company;
         private readonly ServiceLayerInvoiceClient _invoiceClient;
         private readonly GrupoLoteController _grupoController;
+        private readonly PdfGenerationService _pdfGenerationService;
 
         public ProcessamentoNFSController(Company company, ServiceLayerInvoiceClient invoiceClient)
         {
             _company = company ?? throw new ArgumentNullException(nameof(company));
             _invoiceClient = invoiceClient ?? throw new ArgumentNullException(nameof(invoiceClient));
             _grupoController = new GrupoLoteController(company);
+            _pdfGenerationService = new PdfGenerationService(company);
         }
 
         #region Método Centralizado de Recálculo de Status
