@@ -376,14 +376,24 @@ namespace ItTech.Tool.AddonNFS.Controllers
             // Lógica da Regra do Município
             var modelSeqCode = ObterModelPeloSeqCode(int.Parse(linha.CodSeq));
             var cnpjFilial = ObterCNPJ(int.Parse(linha.Filial));
-            string cnpjRegra = ConfigurationManager.AppSettings["CNPJRegra"];
+            string cnpjRegraSP = ConfigurationManager.AppSettings["CNPJRegraSP"];
+            string cnpjRegraMG = ConfigurationManager.AppSettings["CNPJRegraMG"];
 
-            if (modelSeqCode == "46" && cnpjFilial == cnpjRegra)
+            if (modelSeqCode == "46" && cnpjFilial == cnpjRegraSP)
             {
                 invoiceRequest.TaxExtension = new ServiceLayerInvoiceClient.InvoiceTaxExtension
                 {
                     State = "SP",
                     County = "5215"
+                };
+            }
+
+            if (modelSeqCode == "46" && cnpjFilial == cnpjRegraMG)
+            {
+                invoiceRequest.TaxExtension = new ServiceLayerInvoiceClient.InvoiceTaxExtension
+                {
+                    State = "MG",
+                    County = "1410"
                 };
             }
 
