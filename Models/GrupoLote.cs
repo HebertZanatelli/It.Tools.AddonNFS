@@ -24,6 +24,8 @@ namespace ItTech.Tool.AddonNFS.Models
         // Arquivo
         public string NomeArquivo { get; set; }
         public string CaminhoArquivo { get; set; }
+        public string CaminhoPDF { get; set; }
+
 
         public string TipoDocumento { get; set; }
 

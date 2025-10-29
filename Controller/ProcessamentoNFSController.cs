@@ -92,8 +92,7 @@ namespace ItTech.Tool.AddonNFS.Controllers
                     $"Sucessos={sucessos}, Erros={erros}, Pendentes={pendentes}, " +
                     $"Status={statusFinal}");
 
-                // Atualizar usando método existente
-                // IMPORTANTE: passar sucessos como "linhasProcessadas" (conforme semântica atual)
+            
                 return _grupoController.AtualizarStatusGrupoComTotais(
                     grupoCode,
                     statusFinal,
@@ -123,62 +122,7 @@ namespace ItTech.Tool.AddonNFS.Controllers
         /// </summary>
         /// 
 
-        //public List<ResultadoProcessamento> ProcessarLinhasOtimizado(string grupoCode, List<LinhaImportacao> linhas, DateTime dataLancamento, DateTime dataDocumento)
-        //{
-        //    var tempoInicio = DateTime.Now;
-        //    List<ResultadoProcessamento> resultados = new List<ResultadoProcessamento>();
-
-        //    try
-        //    {
-        //        // Validação em lote
-        //        var validacao = ValidarDadosSAP(linhas);
-        //        if (!validacao.Valida && validacao.Erros.Count > 0)
-        //        {
-        //            throw new Exception($"Erros de validação: {string.Join(", ", validacao.Erros.Take(3))}");
-        //        }
-
-        //        // Atualizar status para processamento
-        //        _grupoController.AtualizarStatusGrupoSimples(grupoCode, StatusGrupo.EmProcessamento);
-
-        //        // Processar documentos via Service Layer
-        //        for (int i = 0; i < linhas.Count; i++)
-        //        {
-        //            var linha = linhas[i];
-        //            var resultado = ProcessarLinha(grupo.TipoDocumento, linha, grupo.DataLancamento, grupo.DataDocumento);
-        //            resultados.Add(resultado);
-
-        //            // Atualizar objeto em memória
-        //            linha.Status = resultado.Sucesso ? StatusLinha.Sucesso : StatusLinha.Erro;
-        //            linha.DocNum = resultado.DocNum;
-        //            linha.DocEntry = resultado.DocEntry;
-        //            linha.MensagemErro = resultado.Mensagem;
-        //            linha.Reprocessar = !resultado.Sucesso;
-        //        }
-
-        //        // Atualizar banco em lote
-        //        AtualizarStatusLinhasEmLote(linhas, resultados);
-
-        //        // ✅ CORREÇÃO: Usar método centralizado
-        //        RecalcularStatusGrupoEficiente(grupoCode);
-
-        //        var tempoTotal = DateTime.Now - tempoInicio;
-        //        System.Diagnostics.Debug.WriteLine($"🚀 TOTAL OTIMIZADO: {tempoTotal.TotalSeconds:F1}s para {linhas.Count} linhas");
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        try
-        //        {
-        //            _grupoController.AtualizarStatusGrupoSimples(grupoCode, StatusGrupo.Erro);
-        //        }
-        //        catch { }
-
-        //        throw new Exception($"Erro no processamento otimizado: {ex.Message}", ex);
-        //    }
-
-        //    return resultados;
-        //}
-
-        public List<ResultadoProcessamento> ProcessarLinhasOtimizado(GrupoLote grupo, List<LinhaImportacao> linhas)
+          public List<ResultadoProcessamento> ProcessarLinhasOtimizado(GrupoLote grupo, List<LinhaImportacao> linhas)
         {
             var tempoInicio = DateTime.Now;
             List<ResultadoProcessamento> resultados = new List<ResultadoProcessamento>();
@@ -225,55 +169,6 @@ namespace ItTech.Tool.AddonNFS.Controllers
         /// Processa as linhas selecionadas criando as NFS-e
         /// </summary>
         /// 
-
-        //public List<ResultadoProcessamento> ProcessarLinhas(string grupoCode, List<LinhaImportacao> linhas, DateTime dataLancamento, DateTime dataDocumento)
-        //{
-        //    List<ResultadoProcessamento> resultados = new List<ResultadoProcessamento>();
-
-        //    try
-        //    {
-        //        // Atualizar status para processamento
-        //        _grupoController.AtualizarStatusGrupoSimples(grupoCode, StatusGrupo.EmProcessamento);
-
-        //        // Processar cada linha
-        //        for (int i = 0; i < linhas.Count; i++)
-        //        {
-        //            var linha = linhas[i];
-        //            var resultado = ProcessarLinha(linha, dataLancamento, dataDocumento);
-        //            resultados.Add(resultado);
-
-        //            // Atualizar linha individual no banco
-        //            try
-        //            {
-        //                AtualizarStatusLinha(linha, resultado);
-        //            }
-        //            catch (Exception ex)
-        //            {
-        //                resultado.Mensagem += $" | Erro ao salvar: {ex.Message}";
-        //            }
-        //        }
-
-        //        // ✅ CORREÇÃO: Usar método centralizado ao invés de cálculo manual
-        //        bool sucessoSalvamento = RecalcularStatusGrupoEficiente(grupoCode);
-
-        //        if (!sucessoSalvamento)
-        //        {
-        //            throw new Exception("Falha ao salvar totais do grupo no banco de dados");
-        //        }
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        try
-        //        {
-        //            _grupoController.AtualizarStatusGrupoSimples(grupoCode, StatusGrupo.Erro);
-        //        }
-        //        catch { }
-
-        //        throw new Exception($"Erro no processamento: {ex.Message}", ex);
-        //    }
-
-        //    return resultados;
-        //}
 
         public List<ResultadoProcessamento> ProcessarLinhas(GrupoLote grupo, List<LinhaImportacao> linhas)
         {
@@ -332,7 +227,7 @@ namespace ItTech.Tool.AddonNFS.Controllers
             }
             catch (Exception ex)
             {
-                // Pode registrar log, caso use ILogger ou similar
+                
                 return string.Empty;
             }
         }
@@ -452,134 +347,6 @@ namespace ItTech.Tool.AddonNFS.Controllers
 
             return resultado;
         }
-        //private ResultadoProcessamento ProcessarLinha(LinhaImportacao linha, DateTime dataLancamento, DateTime dataDocumento)
-        //{
-
-        //    ResultadoProcessamento resultado = new ResultadoProcessamento
-        //    {
-        //        CodigoLinha = linha.Code,
-        //        NumeroLinha = linha.NumeroLinha,
-        //        DataProcessamento = DateTime.Now
-        //    };
-
-        //    try
-        //    {
-        //        var invoiceRequest = new ServiceLayerInvoiceClient.InvoiceRequest
-        //        {
-        //            CardCode = linha.CodigoCliente,
-        //            DocDate = dataDocumento,
-        //            // DocDueDate = dataLancamento
-        //        };
-
-        //        var modelSeqCode = ObterModelPeloSeqCode(int.Parse(linha.CodSeq));
-        //        var cnpjFilial = ObterCNPJ(int.Parse(linha.Filial));
-        //        string cnpjRegra = ConfigurationManager.AppSettings["CNPJRegra"];
-
-
-
-        //        if (modelSeqCode == "46" && cnpjFilial == cnpjRegra) {
-        //            invoiceRequest.TaxExtension = new InvoiceTaxExtension();
-        //            invoiceRequest.TaxExtension.State = "SP";
-        //            invoiceRequest.TaxExtension.County = "5215";
-
-        //        }
-
-        //        invoiceRequest.SequenceModel = modelSeqCode ?? "46";
-
-        //        // Filial
-        //        if (!string.IsNullOrEmpty(linha.Filial))
-        //        {
-        //            invoiceRequest.BPL_IDAssignedToInvoice = linha.Filial;
-        //        }
-
-        //        if(!string.IsNullOrEmpty(linha.TipoTributacao))
-        //        {
-        //            invoiceRequest.U_SKILL_TipTrib = linha.TipoTributacao;
-        //        }
-        //        // Observações
-        //        if (!string.IsNullOrEmpty(linha.ObservacaoNF))
-        //        {
-        //            invoiceRequest.OpeningRemarks = linha.ObservacaoNF;
-        //        }
-        //        else
-        //        {
-        //            invoiceRequest.OpeningRemarks = "BANCO XXXX";
-        //        }
-
-        //        // Condição de pagamento
-        //        if (!string.IsNullOrEmpty(linha.CondicaoPagamento))
-        //        {
-        //            try
-        //            {
-        //                invoiceRequest.PaymentGroupCode = Convert.ToInt32(linha.CondicaoPagamento);
-        //            }
-        //            catch
-        //            {
-        //                invoiceRequest.PaymentGroupCode = -1;
-        //            }
-        //        }
-
-        //        // Sequência do documento
-        //        if (!string.IsNullOrEmpty(linha.CodSeq))
-        //        {
-        //            try
-        //            {
-        //                invoiceRequest.SequenceCode = Convert.ToInt32(linha.CodSeq);
-        //            }
-        //            catch { }
-        //        }
-
-        //        // Linha do documento
-        //        var documentLine = new ServiceLayerInvoiceClient.InvoiceDocumentLine
-        //        {
-        //            ItemCode = linha.CodigoItem,
-        //            Quantity = 1,
-        //            UnitPrice = linha.Valor
-        //        };
-
-        //        // Código de imposto
-        //        if (!string.IsNullOrEmpty(linha.CodigoImposto))
-        //        {
-        //            documentLine.TaxCode = linha.CodigoImposto;
-        //        }
-
-        //        // Utilização
-        //        if (!string.IsNullOrEmpty(linha.Utilizacao))
-        //        {
-        //            try
-        //            {
-        //                documentLine.Usage = Convert.ToInt32(linha.Utilizacao);
-        //            }
-        //            catch { }
-        //        }
-
-        //        invoiceRequest.DocumentLines.Add(documentLine);
-        //        // Criar via Service Layer
-        //        var invoiceResponse = _invoiceClient.CreateInvoice(invoiceRequest);
-
-        //        resultado.Sucesso = true;
-        //        resultado.DocEntry = invoiceResponse.DocEntry;
-        //        resultado.DocNum = invoiceResponse.DocNum;
-        //        resultado.Mensagem = $"NFS-e criada - DocNum: {invoiceResponse.DocNum}";
-        //    }
-        //    catch (ServiceLayerInvoiceClient.ServiceLayerException ex)
-        //    {
-        //        resultado.Sucesso = false;
-        //        resultado.Mensagem = $"[{ex.ServiceLayerCode}] {ex.Message}";
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        resultado.Sucesso = false;
-        //        resultado.Mensagem = $"Erro na linha {linha.NumeroLinha}: {ex.Message}";
-
-        //        if (ex.InnerException != null)
-        //        {
-        //            resultado.Mensagem += $" | {ex.InnerException.Message}";
-        //        }
-        //    }
-
-        //    return resultado;
-        //}
 
         private ResultadoProcessamento ProcessarLinha(string tipoDocumento, LinhaImportacao linha, DateTime dataLancamento, DateTime dataDocumento)
         {
@@ -629,6 +396,7 @@ namespace ItTech.Tool.AddonNFS.Controllers
         /// <summary>
         /// Atualiza o status de uma linha após o processamento
         /// </summary>
+   
         private void AtualizarStatusLinha(LinhaImportacao linha, ResultadoProcessamento resultado)
         {
             Recordset oRecordset = null;
@@ -638,29 +406,30 @@ namespace ItTech.Tool.AddonNFS.Controllers
                 oRecordset = (Recordset)_company.GetBusinessObject(BoObjectTypes.BoRecordset);
 
                 string status = resultado.Sucesso ? "S" : "E";
-                string msgErro = "";
-                if (!string.IsNullOrEmpty(resultado.Mensagem))
-                {
-                    msgErro = resultado.Mensagem.Replace("'", "''");
-                    if (msgErro.Length > 250)
-                    {
-                        msgErro = msgErro.Substring(0, 250);
-                    }
-                }
+                string msgErro = (resultado.Mensagem ?? "").Replace("'", "''");
+                if (msgErro.Length > 250) msgErro = msgErro.Substring(0, 250);
+
+                // --- ADIÇÃO PDF ---
+                string pdfStatus = resultado.PdfGeradoComSucesso ? "S" : (string.IsNullOrEmpty(resultado.PdfMensagemErro) ? "N" : "E");
+                string pdfMsgErro = (resultado.PdfMensagemErro ?? "").Replace("'", "''");
+                if (pdfMsgErro.Length > 1000) pdfMsgErro = pdfMsgErro.Substring(0, 1000);
+                // --- FIM ADIÇÃO PDF ---
 
                 string dataProcessamento = DateTime.Now.ToString("yyyy-MM-dd");
                 int horaProcessamento = DateTime.Now.Hour * 60 + DateTime.Now.Minute;
 
                 string query = $@"
-                    UPDATE ""@IT_LINHA_LOTE""
-                    SET ""U_Status"" = '{status}',
-                        ""U_DocEntry"" = {(resultado.DocEntry.HasValue ? resultado.DocEntry.Value.ToString() : "NULL")},
-                        ""U_DocNum"" = {(resultado.DocNum.HasValue ? resultado.DocNum.Value.ToString() : "NULL")},
-                        ""U_MsgErro"" = '{msgErro}',
-                        ""U_DataProc"" = '{dataProcessamento}',
-                        ""U_HoraProc"" = {horaProcessamento},
-                        ""U_Reprocessar"" = '{(resultado.Sucesso ? "N" : "Y")}'
-                    WHERE ""Code"" = '{linha.Code}'";
+            UPDATE ""@IT_LINHA_LOTE""
+            SET ""U_Status"" = '{status}',
+                ""U_DocEntry"" = {(resultado.DocEntry.HasValue ? resultado.DocEntry.Value.ToString() : "NULL")},
+                ""U_DocNum"" = {(resultado.DocNum.HasValue ? resultado.DocNum.Value.ToString() : "NULL")},
+                ""U_MsgErro"" = '{msgErro}',
+                ""U_DataProc"" = '{dataProcessamento}',
+                ""U_HoraProc"" = {horaProcessamento},
+                ""U_Reprocessar"" = '{(resultado.Sucesso ? "N" : "Y")}',
+                ""U_PdfStatus"" = '{pdfStatus}',  -- ADICIONADO
+                ""U_PdfMsg"" = '{pdfMsgErro}'   -- ADICIONADO
+            WHERE ""Code"" = '{linha.Code}'";
 
                 oRecordset.DoQuery(query);
 
@@ -669,7 +438,10 @@ namespace ItTech.Tool.AddonNFS.Controllers
                 linha.DocNum = resultado.DocNum;
                 linha.MensagemErro = resultado.Mensagem;
                 linha.Reprocessar = !resultado.Sucesso;
+                linha.PdfStatus = pdfStatus; 
+                linha.PdfMsg = pdfMsgErro;   
             }
+            
             catch (Exception ex)
             {
                 throw new Exception($"Erro ao atualizar status da linha {linha.NumeroLinha}: {ex.Message}", ex);
@@ -684,15 +456,19 @@ namespace ItTech.Tool.AddonNFS.Controllers
         /// <summary>
         /// Atualiza status de múltiplas linhas em uma única transação
         /// </summary>
+   
         private void AtualizarStatusLinhasEmLote(List<LinhaImportacao> linhas, List<ResultadoProcessamento> resultados)
         {
+            // 1. Verificação inicial
             if (linhas.Count != resultados.Count) return;
 
+            // 2. CORREÇÃO: Declarar o Recordset FORA do bloco try
             Recordset oRecordset = null;
+
             try
             {
+                // 3. Instanciar o objeto
                 oRecordset = (Recordset)_company.GetBusinessObject(BoObjectTypes.BoRecordset);
-
                 var comandos = new List<string>();
 
                 for (int i = 0; i < linhas.Count; i++)
@@ -701,61 +477,65 @@ namespace ItTech.Tool.AddonNFS.Controllers
                     var resultado = resultados[i];
 
                     string status = resultado.Sucesso ? "S" : "E";
-                    string msgErro = "";
-                    if (!string.IsNullOrEmpty(resultado.Mensagem))
-                    {
-                        msgErro = resultado.Mensagem.Replace("'", "''");
-                        if (msgErro.Length > 250)
-                        {
-                            msgErro = msgErro.Substring(0, 250);
-                        }
-                    }
+                    string msgErro = (resultado.Mensagem ?? "").Replace("'", "''");
+                    if (msgErro.Length > 250) msgErro = msgErro.Substring(0, 250);
 
                     string dataProcessamento = DateTime.Now.ToString("yyyy-MM-dd");
                     int horaProcessamento = DateTime.Now.Hour * 60 + DateTime.Now.Minute;
 
+                    // --- Lógica do PDF ---
+                    string pdfStatus = resultado.PdfGeradoComSucesso ? "S" : (string.IsNullOrEmpty(resultado.PdfMensagemErro) ? "N" : "E");
+                    string pdfMsgErro = (resultado.PdfMensagemErro ?? "").Replace("'", "''");
+                    if (pdfMsgErro.Length > 1000) pdfMsgErro = pdfMsgErro.Substring(0, 1000);
+                    // --- FIM Lógica PDF ---
+
                     string comando = $@"
-                        UPDATE ""@IT_LINHA_LOTE""
-                        SET ""U_Status"" = '{status}',
-                            ""U_DocEntry"" = {(resultado.DocEntry.HasValue ? resultado.DocEntry.Value.ToString() : "NULL")},
-                            ""U_DocNum"" = {(resultado.DocNum.HasValue ? resultado.DocNum.Value.ToString() : "NULL")},
-                            ""U_MsgErro"" = '{msgErro}',
-                            ""U_DataProc"" = '{dataProcessamento}',
-                            ""U_HoraProc"" = {horaProcessamento},
-                            ""U_Reprocessar"" = '{(resultado.Sucesso ? "N" : "Y")}'
-                        WHERE ""Code"" = '{linha.Code}';";
+                UPDATE ""@IT_LINHA_LOTE""
+                SET ""U_Status"" = '{status}',
+                    ""U_DocEntry"" = {(resultado.DocEntry.HasValue ? resultado.DocEntry.Value.ToString() : "NULL")},
+                    ""U_DocNum"" = {(resultado.DocNum.HasValue ? resultado.DocNum.Value.ToString() : "NULL")},
+                    ""U_MsgErro"" = '{msgErro}',
+                    ""U_DataProc"" = '{dataProcessamento}',
+                    ""U_HoraProc"" = {horaProcessamento},
+                    ""U_Reprocessar"" = '{(resultado.Sucesso ? "N" : "Y")}',
+                    ""U_PdfStatus"" = '{pdfStatus}',
+                    ""U_PdfMsg"" = '{pdfMsgErro}'
+                WHERE ""Code"" = '{linha.Code}';";
 
                     comandos.Add(comando);
                 }
 
-                // Executar comandos em lote
+                // Executar todos os comandos em lote
                 string queryCompleta = string.Join(" ", comandos);
                 oRecordset.DoQuery(queryCompleta);
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"⚠️ Erro no lote, tentando individual: {ex.Message}");
+                // 4. Implementação do Fallback (o que estava faltando)
+                System.Diagnostics.Debug.WriteLine($"⚠️ Erro no lote de atualização, tentando individualmente: {ex.Message}");
 
-                // Fallback: atualizar uma por uma
+                // Fallback: Tenta atualizar as linhas uma por uma.
                 for (int i = 0; i < linhas.Count; i++)
                 {
                     try
                     {
+                        // Reutiliza o método de atualização individual
                         AtualizarStatusLinha(linhas[i], resultados[i]);
                     }
                     catch (Exception exIndividual)
                     {
-                        System.Diagnostics.Debug.WriteLine($"⚠️ Erro linha {linhas[i].NumeroLinha}: {exIndividual.Message}");
+                        // Loga o erro da linha específica e continua o loop
+                        System.Diagnostics.Debug.WriteLine($"⚠️ Erro na linha {linhas[i].NumeroLinha} (fallback): {exIndividual.Message}");
                     }
                 }
             }
             finally
             {
+                // 5. Liberação do objeto COM (agora acessível)
                 if (oRecordset != null)
                     System.Runtime.InteropServices.Marshal.ReleaseComObject(oRecordset);
             }
         }
-
         #endregion
 
         private ResultadoProcessamento CriarNotaFiscalEntrada(LinhaImportacao linha, DateTime dataLancamento, DateTime dataDocumento, ResultadoProcessamento resultado)
@@ -763,7 +543,7 @@ namespace ItTech.Tool.AddonNFS.Controllers
             // Reutilizamos o mesmo objeto InvoiceRequest
             var requestData = new ServiceLayerInvoiceClient.InvoiceRequest
             {
-                CardCode = linha.CodigoCliente, // No caso de NFE, este seria o código do Fornecedor
+                CardCode = linha.CodigoCliente, 
                 DocDate = dataDocumento,
                 BPL_IDAssignedToInvoice = linha.Filial,
                 OpeningRemarks = linha.ObservacaoNF ?? "Gerado via Add-on de Lote",
@@ -781,7 +561,6 @@ namespace ItTech.Tool.AddonNFS.Controllers
         }
             };
 
-            // Chamamos o novo método específico para criar NF de Entrada
             var response = _invoiceClient.CreatePurchaseInvoice(requestData);
 
             resultado.Sucesso = true;
@@ -792,16 +571,15 @@ namespace ItTech.Tool.AddonNFS.Controllers
             return resultado;
         }
 
-
         private ResultadoProcessamento CriarEntrega(LinhaImportacao linha, DateTime dataLancamento, DateTime dataDocumento, ResultadoProcessamento resultado)
         {
-            // Montamos o mesmo objeto InvoiceRequest que já usamos
+            // 1. Cria a Entrega via Service Layer
             var requestData = new ServiceLayerInvoiceClient.InvoiceRequest
             {
                 CardCode = linha.CodigoCliente,
                 DocDate = dataDocumento,
                 BPL_IDAssignedToInvoice = linha.Filial,
-                OpeningRemarks = linha.ObservacaoNF ?? "Gerado via Add-on",
+                OpeningRemarks = linha.ObservacaoNF ?? "Gerado via Add-on de Lote",
                 PaymentGroupCode = Convert.ToInt32(linha.CondicaoPagamento),
                 SequenceCode = Convert.ToInt32(linha.CodSeq),
                 DocumentLines = new List<ServiceLayerInvoiceClient.InvoiceDocumentLine>
@@ -815,20 +593,76 @@ namespace ItTech.Tool.AddonNFS.Controllers
             }
         }
             };
-
-            // Chamamos o método genérico, passando o endpoint de Entregas
-            //var response = Task.Run(async () => await _invoiceClient._PostDocumentAsync("/b1s/v1/DeliveryNotes", requestData)).Result;
             var response = _invoiceClient.CreateDeliveryNote(requestData);
-
 
             resultado.Sucesso = true;
             resultado.DocEntry = response.DocEntry;
             resultado.DocNum = response.DocNum;
             resultado.Mensagem = $"Entrega criada - DocNum: {response.DocNum}";
 
+            // --- 2. Início da Geração do PDF ---
+            string pdfStatus = "N"; 
+            string pdfMsg = "";
+            string pdfPath = "";
+
+            try
+            {
+                
+                var grupo = _grupoController.ObterGrupo(linha.GrupoCode);
+                string caminhoPdfDestino = grupo?.CaminhoPDF;
+
+                if (string.IsNullOrWhiteSpace(caminhoPdfDestino))
+                {
+                    throw new Exception("Caminho para salvar PDF não configurado no grupo.");
+                }
+
+                string nomeArquivoPdf = $"ENT_{linha.CodigoCliente}_{response.DocNum}_{dataDocumento:yyyyMMdd}";
+
+                // Chamar o serviço de geração via Crystal
+                var pdfResult = _pdfGenerationService.GerarPdfDeEntrega(
+                    response.DocEntry,
+                    caminhoPdfDestino,
+                    nomeArquivoPdf
+                );
+
+                if (pdfResult.Success)
+                {
+                    pdfStatus = "S"; // Sucesso
+                    pdfPath = pdfResult.Message; // Caminho completo
+                    resultado.Mensagem += " | PDF: Sucesso";
+                }
+                else
+                {
+                    pdfStatus = "E"; // Erro
+                    pdfMsg = pdfResult.Message;
+                    resultado.Mensagem += " | PDF: Erro";
+                }
+            }
+            catch (Exception pdfEx)
+            {
+                pdfStatus = "E"; // Erro
+                pdfMsg = pdfEx.Message;
+                resultado.Mensagem += " | PDF: Exceção";
+                System.Diagnostics.Debug.WriteLine($"[PDF Generation Exception] DocEntry: {response.DocEntry}, Error: {pdfEx}");
+            }
+            finally
+            {
+                // Atualizar objeto resultado (usado para salvar no banco depois)
+                resultado.PdfGeradoComSucesso = (pdfStatus == "S");
+                resultado.PdfMensagemErro = pdfMsg;
+                resultado.PdfCaminhoCompleto = pdfPath;
+
+                // Atualizar UDT @IT_LINHA_LOTE com status do PDF (método será modificado a seguir)
+                AtualizarStatusPdfLinha(linha.Code, pdfStatus, pdfMsg);
+
+                // Atualizar o objeto LinhaImportacao em memória também
+                linha.PdfStatus = pdfStatus;
+                linha.PdfMsg = pdfMsg;
+            }
+            // --- Fim da Geração do PDF ---
+
             return resultado;
         }
-
 
         #region Métodos de Validação
 
@@ -1059,5 +893,28 @@ namespace ItTech.Tool.AddonNFS.Controllers
         }
 
         #endregion
+
+        private void AtualizarStatusPdfLinha(string linhaCode, string status, string mensagem)
+        {
+            Recordset rs = null;
+            try
+            {
+                rs = (Recordset)_company.GetBusinessObject(BoObjectTypes.BoRecordset);
+                string msgSql = (mensagem ?? "").Replace("'", "''");
+                if (msgSql.Length > 1000) msgSql = msgSql.Substring(0, 1000); // Limite do campo Memo
+
+                string query = $@"UPDATE ""@IT_LINHA_LOTE"" SET ""U_PdfStatus"" = '{status}', ""U_PdfMsg"" = '{msgSql}' WHERE ""Code"" = '{linhaCode}'";
+                rs.DoQuery(query);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Erro ao atualizar status do PDF para a linha {linhaCode}: {ex.Message}");
+                // Não lançar exceção aqui para não parar o processamento principal
+            }
+            finally
+            {
+                if (rs != null) System.Runtime.InteropServices.Marshal.ReleaseComObject(rs);
+            }
+        }
     }
 }

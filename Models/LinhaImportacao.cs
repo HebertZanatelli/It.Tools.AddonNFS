@@ -26,8 +26,8 @@ namespace ItTech.Tool.AddonNFS.Models
         public string CodSeq { get; set; }                    // Col 8 - RENOMEADO (era SeqNF)
         public string CondicaoPagamento { get; set; }         // Col 9
         public decimal Valor { get; set; }                    // Col 10
-        public string ObservacaoNF { get; set; }              // Col 11 - NOVO
-        public string TipoTributacao { get; set; }            // Col 12 - NOVO
+        public string ObservacaoNF { get; set; }              // Col 11 - 
+        public string TipoTributacao { get; set; }            // Col 12 - 
 
         // Controle de processamento
         public bool Selecionada { get; set; }
@@ -37,6 +37,8 @@ namespace ItTech.Tool.AddonNFS.Models
         public string MensagemErro { get; set; }
         public bool Reprocessar { get; set; }
         public DateTime? DataProcessamento { get; set; }
+        public string PdfStatus { get; set; } = "N"; 
+        public string PdfMsg { get; set; } 
 
         public LinhaImportacao()
         {

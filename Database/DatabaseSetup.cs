@@ -93,6 +93,7 @@ namespace ItTech.Tool.AddonNFS.Database
             CreateField("@IT_GRUPO_LOTE", "LinhasErro", "Linhas com Erro", BoFieldTypes.db_Numeric);
             CreateField("@IT_GRUPO_LOTE", "DataCriacao", "Data de Criação", BoFieldTypes.db_Date);
             CreateField("@IT_GRUPO_LOTE", "HoraCriacao", "Hora de Criação", BoFieldTypes.db_Date, 0, BoFldSubTypes.st_Time);
+            CreateField("@IT_GRUPO_LOTE", "CaminhoPDF", "Caminho para Salvar PDF", BoFieldTypes.db_Memo);
 
             // Campos da tabela IT_LINHA_LOTE
             CreateField("@IT_LINHA_LOTE", "GrupoCode", "Código do Grupo", BoFieldTypes.db_Alpha, 50);
@@ -116,6 +117,9 @@ namespace ItTech.Tool.AddonNFS.Database
             CreateField("@IT_LINHA_LOTE", "Reprocessar", "Reprocessar", BoFieldTypes.db_Alpha, 1);
             CreateField("@IT_LINHA_LOTE", "DataProc", "Data Processamento", BoFieldTypes.db_Date);
             CreateField("@IT_LINHA_LOTE", "HoraProc", "Hora Processamento", BoFieldTypes.db_Date, 0, BoFldSubTypes.st_Time);
+            CreateField("@IT_LINHA_LOTE", "PdfStatus", "Status Geração PDF", BoFieldTypes.db_Alpha, 1);
+            CreateField("@IT_LINHA_LOTE", "PdfMsg", "Mensagem Erro PDF", BoFieldTypes.db_Memo);
+
 
             // Valores válidos para campos de Status
             AddValidValues("@IT_GRUPO_LOTE", "Status", new string[,] {
@@ -143,6 +147,12 @@ namespace ItTech.Tool.AddonNFS.Database
             AddValidValues("@IT_LINHA_LOTE", "Reprocessar", new string[,] {
                 {"Y", "Sim"},
                 {"N", "Não"}
+            });
+
+            AddValidValues("@IT_LINHA_LOTE", "PdfStatus", new string[,] {
+                {"N", "Não Gerado"},
+                {"S", "Sucesso"},
+                {"E", "Erro"}
             });
         }
 

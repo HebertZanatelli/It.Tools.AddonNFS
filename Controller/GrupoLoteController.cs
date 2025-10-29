@@ -22,30 +22,97 @@ namespace ItTech.Tool.AddonNFS.Controllers
         /// <summary>
         /// Cria um novo grupo de lote
         /// </summary>
+        //public string CriarGrupo(GrupoLote grupo)
+        //{
+        //    UserTable userTable = null;
+        //    try
+        //    {
+        //        // Gera um código único manualmente
+        //        string codigo = GerarCodigoUnico();
+
+
+        //        userTable = (UserTable)_company.UserTables.Item("IT_GRUPO_LOTE");
+        //        // userTable.Code = codigo;
+        //        userTable.Name = grupo.Nome;
+        //        userTable.UserFields.Fields.Item("U_Nome").Value = grupo.Nome;
+        //        userTable.UserFields.Fields.Item("U_DataLancamento").Value = grupo.DataLancamento;
+        //        userTable.UserFields.Fields.Item("U_DataDocumento").Value = grupo.DataDocumento;
+        //        userTable.UserFields.Fields.Item("U_NomeArquivo").Value = grupo.NomeArquivo;
+        //        userTable.UserFields.Fields.Item("U_CaminhoArquivo").Value = grupo.CaminhoArquivo;
+        //        userTable.UserFields.Fields.Item("U_Status").Value = "N"; // Novo
+        //        userTable.UserFields.Fields.Item("U_TotalLinhas").Value = 0;
+        //        userTable.UserFields.Fields.Item("U_LinhasProcessadas").Value = 0;
+        //        userTable.UserFields.Fields.Item("U_LinhasErro").Value = 0;
+        //        userTable.UserFields.Fields.Item("U_TipoDoc").Value = grupo.TipoDocumento;
+
+        //        userTable.UserFields.Fields.Item("U_DataCriacao").Value = grupo.DataLancamento; // ou DateTime.Now.Date;
+        //        userTable.UserFields.Fields.Item("U_HoraCriacao").Value = grupo.DataLancamento; // ou DateTime.Now;
+        //        userTable.UserFields.Fields.Item("U_CaminhoPDF").Value = grupo.CaminhoPDF ?? "";
+
+        //        int ret = userTable.Add();
+        //        if (ret != 0)
+        //        {
+        //            throw new Exception(_company.GetLastErrorDescription());
+        //        }
+
+        //        string codigoGerado = null;
+        //        // Após userTable.Add();
+        //        if (ret == 0)
+        //        {
+        //            Recordset rs = (Recordset)_company.GetBusinessObject(BoObjectTypes.BoRecordset);
+        //            string query = $@"SELECT ""Code"" FROM ""@IT_GRUPO_LOTE"" WHERE ""Name"" = '{grupo.Nome}'";
+        //            rs.DoQuery(query);
+        //            if (!rs.EoF)
+        //            {
+        //                codigoGerado = rs.Fields.Item("Code").Value.ToString();
+        //            }
+        //        }
+        //        else
+        //        {
+        //            throw new Exception(_company.GetLastErrorDescription());
+        //        }
+
+        //        return codigoGerado;
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        throw new Exception($"Erro ao criar grupo: {ex.Message}");
+        //    }
+        //}
         public string CriarGrupo(GrupoLote grupo)
         {
+            UserTable userTable = null; // Declarar fora do try
             try
             {
                 // Gera um código único manualmente
-                string codigo = GerarCodigoUnico();
+                string codigo = GerarCodigoUnico(); // Você precisa garantir que este método exista
 
-                // A tabela do SAP deve ser acessada SEM o "@"
-                UserTable userTable = (UserTable)_company.UserTables.Item("IT_GRUPO_LOTE");
-                // userTable.Code = codigo;
-                userTable.Name = grupo.Nome;
+                userTable = (UserTable)_company.UserTables.Item("IT_GRUPO_LOTE");
+
+                // Atribui o código gerado ao campo "Code"
+                // Note: Para bott_NoObjectAutoIncrement, "Code" é o campo chave que definimos.
+                // Se a UDT @IT_GRUPO_LOTE é realmente AutoIncrement (bott_AutoIncrement), 
+                // você NÃO deve definir o "Code" manualmente.
+                // Assumindo que bott_NoObjectAutoIncrement significa que definimos o "Code":
+                // userTable.Code = codigo; // Isso pode não ser necessário se "Code" for pego automaticamente
+
+                userTable.Name = grupo.Nome; 
                 userTable.UserFields.Fields.Item("U_Nome").Value = grupo.Nome;
                 userTable.UserFields.Fields.Item("U_DataLancamento").Value = grupo.DataLancamento;
                 userTable.UserFields.Fields.Item("U_DataDocumento").Value = grupo.DataDocumento;
                 userTable.UserFields.Fields.Item("U_NomeArquivo").Value = grupo.NomeArquivo;
                 userTable.UserFields.Fields.Item("U_CaminhoArquivo").Value = grupo.CaminhoArquivo;
-                userTable.UserFields.Fields.Item("U_Status").Value = "N"; // Novo
+                userTable.UserFields.Fields.Item("U_Status").Value = "N"; 
                 userTable.UserFields.Fields.Item("U_TotalLinhas").Value = 0;
                 userTable.UserFields.Fields.Item("U_LinhasProcessadas").Value = 0;
                 userTable.UserFields.Fields.Item("U_LinhasErro").Value = 0;
                 userTable.UserFields.Fields.Item("U_TipoDoc").Value = grupo.TipoDocumento;
+                userTable.UserFields.Fields.Item("U_DataCriacao").Value = grupo.DataCriacao; // Use a data do objeto
+                userTable.UserFields.Fields.Item("U_HoraCriacao").Value = grupo.DataCriacao; // Use a data/hora do objeto
 
-                userTable.UserFields.Fields.Item("U_DataCriacao").Value = grupo.DataLancamento; // ou DateTime.Now.Date;
-                userTable.UserFields.Fields.Item("U_HoraCriacao").Value = grupo.DataLancamento; // ou DateTime.Now;
+                
+                userTable.UserFields.Fields.Item("U_CaminhoPDF").Value = grupo.CaminhoPDF ?? "";
+               
 
                 int ret = userTable.Add();
                 if (ret != 0)
@@ -53,28 +120,25 @@ namespace ItTech.Tool.AddonNFS.Controllers
                     throw new Exception(_company.GetLastErrorDescription());
                 }
 
-                string codigoGerado = null;
-                // Após userTable.Add();
-                if (ret == 0)
-                {
-                    Recordset rs = (Recordset)_company.GetBusinessObject(BoObjectTypes.BoRecordset);
-                    string query = $@"SELECT ""Code"" FROM ""@IT_GRUPO_LOTE"" WHERE ""Name"" = '{grupo.Nome}'";
-                    rs.DoQuery(query);
-                    if (!rs.EoF)
-                    {
-                        codigoGerado = rs.Fields.Item("Code").Value.ToString();
-                    }
-                }
-                else
-                {
-                    throw new Exception(_company.GetLastErrorDescription());
-                }
+                // Recuperar o "Code" (chave) que foi realmente salvo
+                // Para bott_NoObjectAutoIncrement, o Name ou o último DocEntry podem ser usados.
+                // A forma mais segura é obter o DocEntry.
+                string docEntrySalvo = _company.GetNewObjectKey();
 
-                return codigoGerado;
+                // Precisamos do 'Code'. Se 'Code' não é o DocEntry, precisamos buscá-lo.
+                // Vamos assumir que o 'Code' é o DocEntry para UDTs 'NoObjectAutoIncrement'
+                // Se 'Code' for manual, você deve ter uma lógica para gerá-lo e usá-lo.
+                // Vamos usar o DocEntry como o "Code" retornado.
+                return docEntrySalvo;
             }
             catch (Exception ex)
             {
                 throw new Exception($"Erro ao criar grupo: {ex.Message}");
+            }
+            finally
+            {
+                if (userTable != null)
+                    System.Runtime.InteropServices.Marshal.ReleaseComObject(userTable);
             }
         }
 
@@ -217,6 +281,72 @@ namespace ItTech.Tool.AddonNFS.Controllers
         /// <summary>
         /// Obtém um grupo específico com suas linhas
         /// </summary>
+        //public GrupoLote ObterGrupo(string code)
+        //{
+        //    Recordset oRecordset = null;
+        //    try
+        //    {
+        //        oRecordset = (Recordset)_company.GetBusinessObject(BoObjectTypes.BoRecordset);
+
+        //        // Buscar dados do grupo
+        //        string query = $@"
+        //            SELECT 
+        //                ""Code"",
+        //                ""U_Nome"",
+        //                ""U_DataLancamento"",
+        //                ""U_DataDocumento"",
+        //                ""U_NomeArquivo"",
+        //                ""U_CaminhoArquivo"",
+        //                ""U_Status"",
+        //                ""U_TotalLinhas"",
+        //                ""U_LinhasProcessadas"",
+        //                ""U_LinhasErro""
+        //            FROM ""@IT_GRUPO_LOTE""
+        //            WHERE ""Code"" = '{code}'";
+
+        //        oRecordset.DoQuery(query);
+
+        //        if (oRecordset.EoF)
+        //        {
+        //            throw new Exception($"Grupo '{code}' não encontrado");
+        //        }
+
+        //        // ✅ USAR os nomes corretos da classe GrupoLote  
+        //        int totalLinhas = Convert.ToInt32(oRecordset.Fields.Item("U_TotalLinhas").Value ?? 0);
+        //        int linhasProcessadas = Convert.ToInt32(oRecordset.Fields.Item("U_LinhasProcessadas").Value ?? 0);
+        //        int linhasErro = Convert.ToInt32(oRecordset.Fields.Item("U_LinhasErro").Value ?? 0);
+
+        //        GrupoLote grupo = new GrupoLote
+        //        {
+        //            Code = oRecordset.Fields.Item("Code").Value.ToString(),
+        //            Nome = oRecordset.Fields.Item("U_Nome").Value.ToString(),
+        //            DataLancamento = (DateTime)oRecordset.Fields.Item("U_DataLancamento").Value,
+        //            DataDocumento = (DateTime)oRecordset.Fields.Item("U_DataDocumento").Value,
+        //            NomeArquivo = oRecordset.Fields.Item("U_NomeArquivo").Value.ToString(),
+        //            CaminhoArquivo = oRecordset.Fields.Item("U_CaminhoArquivo").Value.ToString(),
+        //            Status = ConverterStatus(oRecordset.Fields.Item("U_Status").Value.ToString()),
+        //            // ✅ USAR os nomes corretos da classe
+        //            TotalLinhas = totalLinhas,
+        //            LinhasProcessadas = linhasProcessadas,
+        //            LinhasErro = linhasErro
+        //            // LinhasPendentes é calculado automaticamente pela propriedade
+        //        };
+
+        //        // Carregar linhas
+        //        grupo.Linhas = ObterLinhasGrupo(code);
+
+        //        return grupo;
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        throw new Exception($"Erro ao obter grupo: {ex.Message}");
+        //    }
+        //    finally
+        //    {
+        //        if (oRecordset != null)
+        //            System.Runtime.InteropServices.Marshal.ReleaseComObject(oRecordset);
+        //    }
+        //}
         public GrupoLote ObterGrupo(string code)
         {
             Recordset oRecordset = null;
@@ -224,21 +354,23 @@ namespace ItTech.Tool.AddonNFS.Controllers
             {
                 oRecordset = (Recordset)_company.GetBusinessObject(BoObjectTypes.BoRecordset);
 
-                // Buscar dados do grupo
+                // Buscar dados do grupo, incluindo o novo campo
                 string query = $@"
-                    SELECT 
-                        ""Code"",
-                        ""U_Nome"",
-                        ""U_DataLancamento"",
-                        ""U_DataDocumento"",
-                        ""U_NomeArquivo"",
-                        ""U_CaminhoArquivo"",
-                        ""U_Status"",
-                        ""U_TotalLinhas"",
-                        ""U_LinhasProcessadas"",
-                        ""U_LinhasErro""
-                    FROM ""@IT_GRUPO_LOTE""
-                    WHERE ""Code"" = '{code}'";
+            SELECT 
+                ""Code"",
+                ""U_Nome"",
+                ""U_DataLancamento"",
+                ""U_DataDocumento"",
+                ""U_NomeArquivo"",
+                ""U_CaminhoArquivo"",
+                ""U_Status"",
+                ""U_TotalLinhas"",
+                ""U_LinhasProcessadas"",
+                ""U_LinhasErro"",
+                ""U_TipoDoc"",
+                ""U_CaminhoPDF"" 
+            FROM ""@IT_GRUPO_LOTE""
+            WHERE ""Code"" = '{code}'"; // Assumindo que 'Code' é o DocEntry
 
                 oRecordset.DoQuery(query);
 
@@ -247,7 +379,6 @@ namespace ItTech.Tool.AddonNFS.Controllers
                     throw new Exception($"Grupo '{code}' não encontrado");
                 }
 
-                // ✅ USAR os nomes corretos da classe GrupoLote  
                 int totalLinhas = Convert.ToInt32(oRecordset.Fields.Item("U_TotalLinhas").Value ?? 0);
                 int linhasProcessadas = Convert.ToInt32(oRecordset.Fields.Item("U_LinhasProcessadas").Value ?? 0);
                 int linhasErro = Convert.ToInt32(oRecordset.Fields.Item("U_LinhasErro").Value ?? 0);
@@ -261,11 +392,13 @@ namespace ItTech.Tool.AddonNFS.Controllers
                     NomeArquivo = oRecordset.Fields.Item("U_NomeArquivo").Value.ToString(),
                     CaminhoArquivo = oRecordset.Fields.Item("U_CaminhoArquivo").Value.ToString(),
                     Status = ConverterStatus(oRecordset.Fields.Item("U_Status").Value.ToString()),
-                    // ✅ USAR os nomes corretos da classe
                     TotalLinhas = totalLinhas,
                     LinhasProcessadas = linhasProcessadas,
-                    LinhasErro = linhasErro
-                    // LinhasPendentes é calculado automaticamente pela propriedade
+                    LinhasErro = linhasErro,
+                    TipoDocumento = oRecordset.Fields.Item("U_TipoDoc").Value?.ToString() ?? "",
+                    // --- ADICIONE ESTA LINHA ---
+                    CaminhoPDF = oRecordset.Fields.Item("U_CaminhoPDF").Value?.ToString() ?? ""
+                    // --- FIM DA ADIÇÃO ---
                 };
 
                 // Carregar linhas
@@ -283,6 +416,8 @@ namespace ItTech.Tool.AddonNFS.Controllers
                     System.Runtime.InteropServices.Marshal.ReleaseComObject(oRecordset);
             }
         }
+
+
 
         /// <summary>
         /// Atualiza o status de um grupo (método legado mantido para compatibilidade)

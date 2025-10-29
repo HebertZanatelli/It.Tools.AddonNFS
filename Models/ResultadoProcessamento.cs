@@ -18,6 +18,9 @@ namespace ItTech.Tool.AddonNFS.Models
         public int? DocNum { get; set; }
         public string Mensagem { get; set; }
         public DateTime DataProcessamento { get; set; }
+        public bool PdfGeradoComSucesso { get; set; } = false;
+        public string PdfMensagemErro { get; set; }
+        public string PdfCaminhoCompleto { get; set; }
 
         public ResultadoProcessamento()
         {

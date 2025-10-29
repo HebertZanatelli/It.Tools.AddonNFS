@@ -165,42 +165,7 @@ namespace ItTech.Tool.AddonNFS.Forms
             dt.Columns.Add("Code", BoFieldsType.ft_AlphaNumeric, 50); // Campo interno para referência
         }
 
-        private void ConfigurarMatrix()
-        {
-            //// Bind de todas as colunas SEM NumNF
-            //MatrixResultados.Columns.Item("Linha").DataBind.Bind("dtResult", "Linha");
-            //MatrixResultados.Columns.Item("Processar").DataBind.Bind("dtResult", "Processar");
-            //MatrixResultados.Columns.Item("Filial").DataBind.Bind("dtResult", "Filial");
-            //MatrixResultados.Columns.Item("CodCli").DataBind.Bind("dtResult", "CodCli");
-            //MatrixResultados.Columns.Item("NomeCli").DataBind.Bind("dtResult", "NomeCli");
-            //MatrixResultados.Columns.Item("CodItem").DataBind.Bind("dtResult", "CodItem");
-            //MatrixResultados.Columns.Item("DescItem").DataBind.Bind("dtResult", "DescItem");
-            //MatrixResultados.Columns.Item("Utilizacao").DataBind.Bind("dtResult", "Utilizacao");
-            //MatrixResultados.Columns.Item("CodImposto").DataBind.Bind("dtResult", "CodImposto");
-            //MatrixResultados.Columns.Item("SeqNF").DataBind.Bind("dtResult", "SeqNF");
-            //MatrixResultados.Columns.Item("CondPagto").DataBind.Bind("dtResult", "CondPagto");
-            //MatrixResultados.Columns.Item("Valor").DataBind.Bind("dtResult", "Valor");
-            //MatrixResultados.Columns.Item("DocEntry").DataBind.Bind("dtResult", "DocEntry");
-            //MatrixResultados.Columns.Item("DocNum").DataBind.Bind("dtResult", "DocNum");
-            //MatrixResultados.Columns.Item("Status").DataBind.Bind("dtResult", "Status");
-            //MatrixResultados.Columns.Item("TipoTrib").DataBind.Bind("dtResult", "TipoTrib");
-            //// NumNF REMOVIDA - NÃO FAZER BIND
-            //MatrixResultados.Columns.Item("ObsNF").DataBind.Bind("dtResult", "ObsNF");
-            //MatrixResultados.Columns.Item("Mensagem").DataBind.Bind("dtResult", "Mensagem");
-
-            //// Configurar LinkedButtons
-            //var lbCodCli = (LinkedButton)MatrixResultados.Columns.Item("CodCli").ExtendedObject;
-            //lbCodCli.LinkedObject = BoLinkedObject.lf_BusinessPartner;
-
-            //var lbCodItem = (LinkedButton)MatrixResultados.Columns.Item("CodItem").ExtendedObject;
-            //lbCodItem.LinkedObject = BoLinkedObject.lf_Items;
-
-            //var lbDocEntry = (LinkedButton)MatrixResultados.Columns.Item("DocEntry").ExtendedObject;
-            //lbDocEntry.LinkedObject = BoLinkedObject.lf_Invoice;
-
-
-        }
-
+      
         #endregion
 
         #region Carregamento de Dados
@@ -230,8 +195,7 @@ namespace ItTech.Tool.AddonNFS.Forms
                 _totalSelecionadas = 0;
                 _valorTotalSelecionado = 0;
 
-                //  CarregarMatrix();
-                //  AtualizarInterface();
+           
             }
             finally
             {
@@ -239,96 +203,14 @@ namespace ItTech.Tool.AddonNFS.Forms
             }
         }
 
-        private void CarregarMatrix()
-        {
-            var dt = UIAPIRawForm.DataSources.DataTables.Item("dtResult");
-            dt.Rows.Clear();
-
-            foreach (var linha in _grupo.Linhas)
-            {
-                dt.Rows.Add();
-                int index = dt.Rows.Count - 1;
-
-                // Primeira coluna: número da linha
-                dt.SetValue("Linha", index, linha.NumeroLinha);
-
-                // Segunda coluna: Processar - lógica principal
-                bool podeProcessar = linha.Status == StatusLinha.Pendente;
-                string valorProcessar = podeProcessar ? "S" : "N";
-                dt.SetValue("Processar", index, valorProcessar);
-
-                // Inicializar seleção
-                if (podeProcessar)
-                {
-                    _linhasSelecionadas[linha.Code] = true; // Por padrão, pendentes vêm marcadas
-                    _totalSelecionadas++;
-                    _valorTotalSelecionado += linha.Valor;
-                }
-
-                dt.SetValue("Filial", index, linha.Filial);
-                dt.SetValue("CodCli", index, linha.CodigoCliente);
-                dt.SetValue("NomeCli", index, TruncarTexto(linha.NomeCliente, 100));
-                dt.SetValue("CodItem", index, linha.CodigoItem);
-                dt.SetValue("DescItem", index, TruncarTexto(linha.DescricaoItem, 100));
-                dt.SetValue("Utilizacao", index, linha.Utilizacao ?? "");
-                dt.SetValue("CodImposto", index, linha.CodigoImposto ?? "");
-                dt.SetValue("SeqNF", index, linha.CodSeq ?? "");
-                dt.SetValue("CondPagto", index, linha.CondicaoPagamento ?? "");
-                dt.SetValue("Valor", index, Convert.ToDouble(linha.Valor));
-                dt.SetValue("DocEntry", index, linha.DocEntry ?? 0);
-                dt.SetValue("DocNum", index, linha.DocNum ?? 0);
-
-                // Status visual
-                string statusText = linha.Status == StatusLinha.Sucesso ? "✓ Sucesso" :
-                                   linha.Status == StatusLinha.Erro ? "✗ Erro" :
-                                   "○ Pendente";
-                dt.SetValue("Status", index, statusText);
-
-                dt.SetValue("TipoTrib", index, linha.TipoTributacao ?? "");
-                // NumNF REMOVIDA - NÃO SETAR VALOR
-                dt.SetValue("ObsNF", index, TruncarTexto(linha.ObservacaoNF, 254));
-                dt.SetValue("Mensagem", index, TruncarTexto(linha.MensagemErro, 254));
-                dt.SetValue("Code", index, linha.Code);
-            }
-
-            //MatrixResultados.Clear();
-            //MatrixResultados.LoadFromDataSource();
-
-            // Desabilitar combo para linhas processadas
-            // AtualizarEstadoCombos();
-
-            // Usar ajuste manual ao invés de AutoResizeColumns
-            AjustarLarguraColunas();
-        }
-
+   
         private void AjustarLarguraColunas()
         {
             try
             {
                 UIAPIRawForm.Freeze(true);
 
-                // Definir larguras fixas para cada coluna
-                //MatrixResultados.Columns.Item("Linha").Width = 35;
-                //MatrixResultados.Columns.Item("Processar").Width = 65;
-                //MatrixResultados.Columns.Item("Filial").Width = 35;
-                //MatrixResultados.Columns.Item("CodCli").Width = 80;
-                //MatrixResultados.Columns.Item("NomeCli").Width = 180;
-                //MatrixResultados.Columns.Item("CodItem").Width = 80;
-                //MatrixResultados.Columns.Item("DescItem").Width = 150;
-                //MatrixResultados.Columns.Item("Utilizacao").Width = 60;
-                //MatrixResultados.Columns.Item("CodImposto").Width = 80;
-                //MatrixResultados.Columns.Item("SeqNF").Width = 60;
-                //MatrixResultados.Columns.Item("CondPagto").Width = 80;
-                //MatrixResultados.Columns.Item("Valor").Width = 80;
-                //MatrixResultados.Columns.Item("DocEntry").Width = 70;
-                //MatrixResultados.Columns.Item("DocNum").Width = 70;
-                //MatrixResultados.Columns.Item("Status").Width = 80;
-                //MatrixResultados.Columns.Item("TipoTrib").Width = 70;
-                //// NumNF REMOVIDA
-                //MatrixResultados.Columns.Item("ObsNF").Width = 120;
-                //MatrixResultados.Columns.Item("Mensagem").Width = 200;
-
-
+                
             }
             finally
             {
@@ -336,33 +218,7 @@ namespace ItTech.Tool.AddonNFS.Forms
             }
         }
 
-        //private void AtualizarEstadoCombos()
-        //{
-        //    for (int i = 1; i <= MatrixResultados.RowCount; i++)
-        //    {
-        //        var statusCell = MatrixResultados.Columns.Item("Status").Cells.Item(i).Specific as EditText;
-        //        var comboCell = MatrixResultados.Columns.Item("Processar").Cells.Item(i).Specific as ComboBox;
-
-        //        if (statusCell != null && comboCell != null)
-        //        {
-        //            bool isPendente = statusCell.Value.Contains("Pendente");
-
-        //            // Habilitar apenas se for pendente (permite edição)
-        //            if (isPendente)
-        //            {
-        //                comboCell.Item.Enabled = true;
-        //            }
-        //            else
-        //            {
-        //                // Desabilitar se já foi processado (sucesso ou erro)
-        //                comboCell.Item.Enabled = false;
-        //                // Aplicar cor visual para desabilitados
-        //                MatrixResultados.CommonSetting.SetCellBackColor(i, 2, 14737632); // Cinza claro na coluna Processar
-        //            }
-        //        }
-        //    }
-        //}
-
+        
         #endregion
 
         #region Processamento
@@ -688,40 +544,6 @@ namespace ItTech.Tool.AddonNFS.Forms
 
         #region Eventos
 
-        //private void Matrix_ComboSelectAfter(object sboObject, SBOItemEventArg pVal)
-        //{
-        //    if (_atualizandoSelecao || pVal.ColUID != "Processar") return;
-
-        //    try
-        //    {
-        //        _atualizandoSelecao = true;
-
-        //        // Obter o código da linha
-        //        var codeCell = MatrixResultados.Columns.Item("Code").Cells.Item(pVal.Row).Specific as EditText;
-        //        var comboCell = MatrixResultados.Columns.Item("Processar").Cells.Item(pVal.Row).Specific as ComboBox;
-
-        //        if (codeCell != null && comboCell != null)
-        //        {
-        //            string code = codeCell.Value;
-        //            bool selecionado = comboCell.Selected?.Value == "S";
-
-        //            // Atualizar dicionário
-        //            _linhasSelecionadas[code] = selecionado;
-
-        //            // Recalcular totais
-        //            RecalcularTotais();
-
-        //            // Atualizar interface
-        //            AtualizarStatus();
-        //            AtualizarBotoes();
-        //        }
-        //    }
-        //    finally
-        //    {
-        //        _atualizandoSelecao = false;
-        //    }
-        //}
-
         private void CmbFiltro_ComboSelectAfter(object sboObject, SBOItemEventArg pVal)
         {
             if (_grupo == null || _processamentoEmAndamento) return;
@@ -788,9 +610,7 @@ namespace ItTech.Tool.AddonNFS.Forms
                     dt.SetValue("Code", index, linha.Code);
                 }
 
-                //MatrixResultados.Clear();
-                //MatrixResultados.LoadFromDataSource();
-                //AtualizarEstadoCombos();
+               
                 AjustarLarguraColunas();
             }
             finally
@@ -799,12 +619,7 @@ namespace ItTech.Tool.AddonNFS.Forms
             }
         }
 
-        private void Matrix_LinkPressedAfter(object sboObject, SBOItemEventArg pVal)
-        {
-            // Evento para quando o usuário clica em LinkedButton
-            // O SAP B1 já abre automaticamente o documento vinculado
-        }
-
+     
         private void BtnProcessar_ClickBefore(object sboObject, SBOItemEventArg pVal, out bool BubbleEvent)
         {
             BubbleEvent = true;
@@ -855,30 +670,6 @@ namespace ItTech.Tool.AddonNFS.Forms
             UIAPIRawForm.Close();
         }
 
-        private void Form_LoadAfter(SBOItemEventArg pVal)
-        {
-            UIAPIRawForm.Title = "Processamento de NFS-e em Lote - Resultado";
-            FormManager.RegistrarFormulario(UIAPIRawForm.UniqueID, "Resultado Processamento", false, null, _grupo?.Code, 4);
-            this.UIAPIRawForm.Height = 600; // Menor que 699 original
-            this.UIAPIRawForm.Update();
-            // Aplicar ajuste de colunas após carregamento
-            System.Windows.Forms.Timer timer = new System.Windows.Forms.Timer();
-            timer.Interval = 500; // 500ms
-            timer.Tick += (s, e) =>
-            {
-                timer.Stop();
-                timer.Dispose();
-
-                //if (MatrixResultados.RowCount > 0)
-                //{
-                //    AjustarLarguraColunas();
-                //}
-
-                // Ajustar componentes após carregamento
-                AjustarComponentesParaTamanhoJanela();
-            };
-            timer.Start();
-        }
 
         private void Form_ResizeAfter(SBOItemEventArg pVal)
         {
@@ -978,7 +769,7 @@ namespace ItTech.Tool.AddonNFS.Forms
                 {
                     try
                     {
-                        //await _serviceLayerClient?.DisconnectAsync(CancellationToken.None);
+                       
                     }
                     catch { }
                 });
