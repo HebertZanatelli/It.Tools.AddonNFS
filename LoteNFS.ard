@@ -1,0 +1,759 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AddOnRegData xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" SlientInstallation="No" SlientUpgrade="No" Partnernmsp="IT Tech" SchemaVersion="3.0" Type="" MultipleVersion="false" OnDemand="" OnPremise="" ExtName="NFS em Lote" ExtVersion="25.07.1.14" Contdata="" Partner="IT Tech" DBType="Both" ClientType="A">
+  <Validity>
+    <SBOCompatibility>
+      <Version From="920.140.04" To="999.999.99" />
+    </SBOCompatibility>
+  </Validity>
+  <Configuration>
+    <Repository>
+      <Properties />
+    </Repository>
+    <Deployment>
+      <Properties />
+    </Deployment>
+    <Assignment>
+      <Properties />
+    </Assignment>
+  </Configuration>
+  <Addons>
+    <Addon Name="" Group="" ForceFlag="" Visible="" AutoAssign="" SelfUpgrd="">
+      <x86 AddonExe="C:\Users\intragroup_prd_adm\Desktop\projetos\ItTech.Tool.AddonNFS\bin\x86\Debug\ItTech.Tool.AddonNFS.exe" AddonSig="">
+        <Installation>
+          <Files>
+            <File FileName="ClosedXML.dll">
+              <Actions />
+            </File>
+            <File FileName="ClosedXML.Parser.dll">
+              <Actions />
+            </File>
+            <File FileName="ClosedXML.Parser.xml">
+              <Actions />
+            </File>
+            <File FileName="ClosedXML.pdb">
+              <Actions />
+            </File>
+            <File FileName="ClosedXML.xml">
+              <Actions />
+            </File>
+            <File FileName="CrystalDecisions.CrystalReports.Design.dll">
+              <Actions />
+            </File>
+            <File FileName="CrystalDecisions.Enterprise.Desktop.Report.dll">
+              <Actions />
+            </File>
+            <File FileName="CrystalDecisions.PromptingClientSDK.dll">
+              <Actions />
+            </File>
+            <File FileName="CrystalDecisions.Web.dll">
+              <Actions />
+            </File>
+            <File FileName="DocumentFormat.OpenXml.dll">
+              <Actions />
+            </File>
+            <File FileName="DocumentFormat.OpenXml.Framework.dll">
+              <Actions />
+            </File>
+            <File FileName="DocumentFormat.OpenXml.Framework.xml">
+              <Actions />
+            </File>
+            <File FileName="DocumentFormat.OpenXml.xml">
+              <Actions />
+            </File>
+            <File FileName="ExcelNumberFormat.dll">
+              <Actions />
+            </File>
+            <File FileName="ExcelNumberFormat.xml">
+              <Actions />
+            </File>
+            <File FileName="ItTech.Tool.AddonNFS.b1s">
+              <Actions />
+            </File>
+            <File FileName="ItTech.Tool.AddonNFS.exe">
+              <Actions />
+            </File>
+            <File FileName="ItTech.Tool.AddonNFS.exe.config">
+              <Actions />
+            </File>
+            <File FileName="ItTech.Tool.AddonNFS.pdb">
+              <Actions />
+            </File>
+            <File FileName="Microsoft.Bcl.AsyncInterfaces.dll">
+              <Actions />
+            </File>
+            <File FileName="Microsoft.Bcl.AsyncInterfaces.xml">
+              <Actions />
+            </File>
+            <File FileName="Microsoft.Bcl.HashCode.dll">
+              <Actions />
+            </File>
+            <File FileName="Microsoft.Bcl.HashCode.xml">
+              <Actions />
+            </File>
+            <File FileName="RBush.dll">
+              <Actions />
+            </File>
+            <File FileName="RBush.xml">
+              <Actions />
+            </File>
+            <File FileName="SAPBusinessOneSDK.dll">
+              <Actions />
+            </File>
+            <File FileName="SixLabors.Fonts.dll">
+              <Actions />
+            </File>
+            <File FileName="SixLabors.Fonts.xml">
+              <Actions />
+            </File>
+            <File FileName="System.Buffers.dll">
+              <Actions />
+            </File>
+            <File FileName="System.Buffers.xml">
+              <Actions />
+            </File>
+            <File FileName="System.Configuration.ConfigurationManager.dll">
+              <Actions />
+            </File>
+            <File FileName="System.Configuration.ConfigurationManager.xml">
+              <Actions />
+            </File>
+            <File FileName="System.Memory.dll">
+              <Actions />
+            </File>
+            <File FileName="System.Memory.xml">
+              <Actions />
+            </File>
+            <File FileName="System.Numerics.Vectors.dll">
+              <Actions />
+            </File>
+            <File FileName="System.Numerics.Vectors.xml">
+              <Actions />
+            </File>
+            <File FileName="System.Runtime.CompilerServices.Unsafe.dll">
+              <Actions />
+            </File>
+            <File FileName="System.Runtime.CompilerServices.Unsafe.xml">
+              <Actions />
+            </File>
+            <File FileName="System.Text.Encodings.Web.dll">
+              <Actions />
+            </File>
+            <File FileName="System.Text.Encodings.Web.xml">
+              <Actions />
+            </File>
+            <File FileName="System.Text.Json.dll">
+              <Actions />
+            </File>
+            <File FileName="System.Text.Json.xml">
+              <Actions />
+            </File>
+            <File FileName="System.Threading.Tasks.Extensions.dll">
+              <Actions />
+            </File>
+            <File FileName="System.Threading.Tasks.Extensions.xml">
+              <Actions />
+            </File>
+            <File FileName="System.ValueTuple.dll">
+              <Actions />
+            </File>
+            <File FileName="System.ValueTuple.xml">
+              <Actions />
+            </File>
+            <File FileName="System.Windows.Forms.dll">
+              <Actions />
+            </File>
+            <File FileName="System.Xml.dll">
+              <Actions />
+            </File>
+            <File FileName="System.Xml.Linq.dll">
+              <Actions />
+            </File>
+            <File FileName="WindowsBase.dll">
+              <Actions />
+            </File>
+            <File FileName="Forms\FormGrupoLote.b1f">
+              <Actions />
+            </File>
+            <File FileName="Forms\FormGrupoLote.b1f.cs">
+              <Actions />
+            </File>
+            <File FileName="Forms\FormResultadoProcessamento.b1f">
+              <Actions />
+            </File>
+            <File FileName="Forms\FormResultadoProcessamento.b1f.cs">
+              <Actions />
+            </File>
+            <File FileName="Forms\FormSelecionarGrupo.b1f">
+              <Actions />
+            </File>
+            <File FileName="Forms\FormSelecionarGrupo.b1f.cs">
+              <Actions />
+            </File>
+            <File FileName="Forms\FormVisualizacaoLinhas.b1f">
+              <Actions />
+            </File>
+            <File FileName="Forms\FormVisualizacaoLinhas.b1f.cs">
+              <Actions />
+            </File>
+            <File FileName="rpt\DLN-ENT.rpt">
+              <Actions />
+            </File>
+          </Files>
+        </Installation>
+        <Uninstallation>
+          <Files>
+            <File FileName="ClosedXML.dll">
+              <Actions />
+            </File>
+            <File FileName="ClosedXML.Parser.dll">
+              <Actions />
+            </File>
+            <File FileName="ClosedXML.Parser.xml">
+              <Actions />
+            </File>
+            <File FileName="ClosedXML.pdb">
+              <Actions />
+            </File>
+            <File FileName="ClosedXML.xml">
+              <Actions />
+            </File>
+            <File FileName="CrystalDecisions.CrystalReports.Design.dll">
+              <Actions />
+            </File>
+            <File FileName="CrystalDecisions.Enterprise.Desktop.Report.dll">
+              <Actions />
+            </File>
+            <File FileName="CrystalDecisions.PromptingClientSDK.dll">
+              <Actions />
+            </File>
+            <File FileName="CrystalDecisions.Web.dll">
+              <Actions />
+            </File>
+            <File FileName="DocumentFormat.OpenXml.dll">
+              <Actions />
+            </File>
+            <File FileName="DocumentFormat.OpenXml.Framework.dll">
+              <Actions />
+            </File>
+            <File FileName="DocumentFormat.OpenXml.Framework.xml">
+              <Actions />
+            </File>
+            <File FileName="DocumentFormat.OpenXml.xml">
+              <Actions />
+            </File>
+            <File FileName="ExcelNumberFormat.dll">
+              <Actions />
+            </File>
+            <File FileName="ExcelNumberFormat.xml">
+              <Actions />
+            </File>
+            <File FileName="ItTech.Tool.AddonNFS.b1s">
+              <Actions />
+            </File>
+            <File FileName="ItTech.Tool.AddonNFS.exe">
+              <Actions />
+            </File>
+            <File FileName="ItTech.Tool.AddonNFS.exe.config">
+              <Actions />
+            </File>
+            <File FileName="ItTech.Tool.AddonNFS.pdb">
+              <Actions />
+            </File>
+            <File FileName="Microsoft.Bcl.AsyncInterfaces.dll">
+              <Actions />
+            </File>
+            <File FileName="Microsoft.Bcl.AsyncInterfaces.xml">
+              <Actions />
+            </File>
+            <File FileName="Microsoft.Bcl.HashCode.dll">
+              <Actions />
+            </File>
+            <File FileName="Microsoft.Bcl.HashCode.xml">
+              <Actions />
+            </File>
+            <File FileName="RBush.dll">
+              <Actions />
+            </File>
+            <File FileName="RBush.xml">
+              <Actions />
+            </File>
+            <File FileName="SAPBusinessOneSDK.dll">
+              <Actions />
+            </File>
+            <File FileName="SixLabors.Fonts.dll">
+              <Actions />
+            </File>
+            <File FileName="SixLabors.Fonts.xml">
+              <Actions />
+            </File>
+            <File FileName="System.Buffers.dll">
+              <Actions />
+            </File>
+            <File FileName="System.Buffers.xml">
+              <Actions />
+            </File>
+            <File FileName="System.Configuration.ConfigurationManager.dll">
+              <Actions />
+            </File>
+            <File FileName="System.Configuration.ConfigurationManager.xml">
+              <Actions />
+            </File>
+            <File FileName="System.Memory.dll">
+              <Actions />
+            </File>
+            <File FileName="System.Memory.xml">
+              <Actions />
+            </File>
+            <File FileName="System.Numerics.Vectors.dll">
+              <Actions />
+            </File>
+            <File FileName="System.Numerics.Vectors.xml">
+              <Actions />
+            </File>
+            <File FileName="System.Runtime.CompilerServices.Unsafe.dll">
+              <Actions />
+            </File>
+            <File FileName="System.Runtime.CompilerServices.Unsafe.xml">
+              <Actions />
+            </File>
+            <File FileName="System.Text.Encodings.Web.dll">
+              <Actions />
+            </File>
+            <File FileName="System.Text.Encodings.Web.xml">
+              <Actions />
+            </File>
+            <File FileName="System.Text.Json.dll">
+              <Actions />
+            </File>
+            <File FileName="System.Text.Json.xml">
+              <Actions />
+            </File>
+            <File FileName="System.Threading.Tasks.Extensions.dll">
+              <Actions />
+            </File>
+            <File FileName="System.Threading.Tasks.Extensions.xml">
+              <Actions />
+            </File>
+            <File FileName="System.ValueTuple.dll">
+              <Actions />
+            </File>
+            <File FileName="System.ValueTuple.xml">
+              <Actions />
+            </File>
+            <File FileName="System.Windows.Forms.dll">
+              <Actions />
+            </File>
+            <File FileName="System.Xml.dll">
+              <Actions />
+            </File>
+            <File FileName="System.Xml.Linq.dll">
+              <Actions />
+            </File>
+            <File FileName="WindowsBase.dll">
+              <Actions />
+            </File>
+            <File FileName="Forms\FormGrupoLote.b1f">
+              <Actions />
+            </File>
+            <File FileName="Forms\FormGrupoLote.b1f.cs">
+              <Actions />
+            </File>
+            <File FileName="Forms\FormResultadoProcessamento.b1f">
+              <Actions />
+            </File>
+            <File FileName="Forms\FormResultadoProcessamento.b1f.cs">
+              <Actions />
+            </File>
+            <File FileName="Forms\FormSelecionarGrupo.b1f">
+              <Actions />
+            </File>
+            <File FileName="Forms\FormSelecionarGrupo.b1f.cs">
+              <Actions />
+            </File>
+            <File FileName="Forms\FormVisualizacaoLinhas.b1f">
+              <Actions />
+            </File>
+            <File FileName="Forms\FormVisualizacaoLinhas.b1f.cs">
+              <Actions />
+            </File>
+            <File FileName="rpt\DLN-ENT.rpt">
+              <Actions />
+            </File>
+          </Files>
+        </Uninstallation>
+      </x86>
+      <x64 AddonExe="C:\Users\intragroup_prd_adm\Desktop\projetos\ItTech.Tool.AddonNFS\bin\x64\Debug\ItTech.Tool.AddonNFS.exe" AddonSig="">
+        <Installation>
+          <Files>
+            <File FileName="ClosedXML.dll">
+              <Actions />
+            </File>
+            <File FileName="ClosedXML.Parser.dll">
+              <Actions />
+            </File>
+            <File FileName="ClosedXML.Parser.xml">
+              <Actions />
+            </File>
+            <File FileName="ClosedXML.pdb">
+              <Actions />
+            </File>
+            <File FileName="ClosedXML.xml">
+              <Actions />
+            </File>
+            <File FileName="CrystalDecisions.CrystalReports.Design.dll">
+              <Actions />
+            </File>
+            <File FileName="CrystalDecisions.Enterprise.Desktop.Report.dll">
+              <Actions />
+            </File>
+            <File FileName="CrystalDecisions.PromptingClientSDK.dll">
+              <Actions />
+            </File>
+            <File FileName="CrystalDecisions.Web.dll">
+              <Actions />
+            </File>
+            <File FileName="DocumentFormat.OpenXml.dll">
+              <Actions />
+            </File>
+            <File FileName="DocumentFormat.OpenXml.Framework.dll">
+              <Actions />
+            </File>
+            <File FileName="DocumentFormat.OpenXml.Framework.xml">
+              <Actions />
+            </File>
+            <File FileName="DocumentFormat.OpenXml.xml">
+              <Actions />
+            </File>
+            <File FileName="ExcelNumberFormat.dll">
+              <Actions />
+            </File>
+            <File FileName="ExcelNumberFormat.xml">
+              <Actions />
+            </File>
+            <File FileName="ItTech.Tool.AddonNFS.b1s">
+              <Actions />
+            </File>
+            <File FileName="ItTech.Tool.AddonNFS.exe">
+              <Actions />
+            </File>
+            <File FileName="ItTech.Tool.AddonNFS.exe.config">
+              <Actions />
+            </File>
+            <File FileName="ItTech.Tool.AddonNFS.pdb">
+              <Actions />
+            </File>
+            <File FileName="Microsoft.Bcl.AsyncInterfaces.dll">
+              <Actions />
+            </File>
+            <File FileName="Microsoft.Bcl.AsyncInterfaces.xml">
+              <Actions />
+            </File>
+            <File FileName="Microsoft.Bcl.HashCode.dll">
+              <Actions />
+            </File>
+            <File FileName="Microsoft.Bcl.HashCode.xml">
+              <Actions />
+            </File>
+            <File FileName="RBush.dll">
+              <Actions />
+            </File>
+            <File FileName="RBush.xml">
+              <Actions />
+            </File>
+            <File FileName="SAPBusinessOneSDK.dll">
+              <Actions />
+            </File>
+            <File FileName="SixLabors.Fonts.dll">
+              <Actions />
+            </File>
+            <File FileName="SixLabors.Fonts.xml">
+              <Actions />
+            </File>
+            <File FileName="System.Buffers.dll">
+              <Actions />
+            </File>
+            <File FileName="System.Buffers.xml">
+              <Actions />
+            </File>
+            <File FileName="System.Configuration.ConfigurationManager.dll">
+              <Actions />
+            </File>
+            <File FileName="System.Configuration.ConfigurationManager.xml">
+              <Actions />
+            </File>
+            <File FileName="System.Memory.dll">
+              <Actions />
+            </File>
+            <File FileName="System.Memory.xml">
+              <Actions />
+            </File>
+            <File FileName="System.Numerics.Vectors.dll">
+              <Actions />
+            </File>
+            <File FileName="System.Numerics.Vectors.xml">
+              <Actions />
+            </File>
+            <File FileName="System.Runtime.CompilerServices.Unsafe.dll">
+              <Actions />
+            </File>
+            <File FileName="System.Runtime.CompilerServices.Unsafe.xml">
+              <Actions />
+            </File>
+            <File FileName="System.Text.Encodings.Web.dll">
+              <Actions />
+            </File>
+            <File FileName="System.Text.Encodings.Web.xml">
+              <Actions />
+            </File>
+            <File FileName="System.Text.Json.dll">
+              <Actions />
+            </File>
+            <File FileName="System.Text.Json.xml">
+              <Actions />
+            </File>
+            <File FileName="System.Threading.Tasks.Extensions.dll">
+              <Actions />
+            </File>
+            <File FileName="System.Threading.Tasks.Extensions.xml">
+              <Actions />
+            </File>
+            <File FileName="System.ValueTuple.dll">
+              <Actions />
+            </File>
+            <File FileName="System.ValueTuple.xml">
+              <Actions />
+            </File>
+            <File FileName="System.Windows.Forms.dll">
+              <Actions />
+            </File>
+            <File FileName="System.Xml.dll">
+              <Actions />
+            </File>
+            <File FileName="System.Xml.Linq.dll">
+              <Actions />
+            </File>
+            <File FileName="WindowsBase.dll">
+              <Actions />
+            </File>
+            <File FileName="Forms\FormGrupoLote.b1f">
+              <Actions />
+            </File>
+            <File FileName="Forms\FormGrupoLote.b1f.cs">
+              <Actions />
+            </File>
+            <File FileName="Forms\FormResultadoProcessamento.b1f">
+              <Actions />
+            </File>
+            <File FileName="Forms\FormResultadoProcessamento.b1f.cs">
+              <Actions />
+            </File>
+            <File FileName="Forms\FormSelecionarGrupo.b1f">
+              <Actions />
+            </File>
+            <File FileName="Forms\FormSelecionarGrupo.b1f.cs">
+              <Actions />
+            </File>
+            <File FileName="Forms\FormVisualizacaoLinhas.b1f">
+              <Actions />
+            </File>
+            <File FileName="Forms\FormVisualizacaoLinhas.b1f.cs">
+              <Actions />
+            </File>
+            <File FileName="rpt\DLN-ENT.rpt">
+              <Actions />
+            </File>
+          </Files>
+        </Installation>
+        <Uninstallation>
+          <Files>
+            <File FileName="ClosedXML.dll">
+              <Actions />
+            </File>
+            <File FileName="ClosedXML.Parser.dll">
+              <Actions />
+            </File>
+            <File FileName="ClosedXML.Parser.xml">
+              <Actions />
+            </File>
+            <File FileName="ClosedXML.pdb">
+              <Actions />
+            </File>
+            <File FileName="ClosedXML.xml">
+              <Actions />
+            </File>
+            <File FileName="CrystalDecisions.CrystalReports.Design.dll">
+              <Actions />
+            </File>
+            <File FileName="CrystalDecisions.Enterprise.Desktop.Report.dll">
+              <Actions />
+            </File>
+            <File FileName="CrystalDecisions.PromptingClientSDK.dll">
+              <Actions />
+            </File>
+            <File FileName="CrystalDecisions.Web.dll">
+              <Actions />
+            </File>
+            <File FileName="DocumentFormat.OpenXml.dll">
+              <Actions />
+            </File>
+            <File FileName="DocumentFormat.OpenXml.Framework.dll">
+              <Actions />
+            </File>
+            <File FileName="DocumentFormat.OpenXml.Framework.xml">
+              <Actions />
+            </File>
+            <File FileName="DocumentFormat.OpenXml.xml">
+              <Actions />
+            </File>
+            <File FileName="ExcelNumberFormat.dll">
+              <Actions />
+            </File>
+            <File FileName="ExcelNumberFormat.xml">
+              <Actions />
+            </File>
+            <File FileName="ItTech.Tool.AddonNFS.b1s">
+              <Actions />
+            </File>
+            <File FileName="ItTech.Tool.AddonNFS.exe">
+              <Actions />
+            </File>
+            <File FileName="ItTech.Tool.AddonNFS.exe.config">
+              <Actions />
+            </File>
+            <File FileName="ItTech.Tool.AddonNFS.pdb">
+              <Actions />
+            </File>
+            <File FileName="Microsoft.Bcl.AsyncInterfaces.dll">
+              <Actions />
+            </File>
+            <File FileName="Microsoft.Bcl.AsyncInterfaces.xml">
+              <Actions />
+            </File>
+            <File FileName="Microsoft.Bcl.HashCode.dll">
+              <Actions />
+            </File>
+            <File FileName="Microsoft.Bcl.HashCode.xml">
+              <Actions />
+            </File>
+            <File FileName="RBush.dll">
+              <Actions />
+            </File>
+            <File FileName="RBush.xml">
+              <Actions />
+            </File>
+            <File FileName="SAPBusinessOneSDK.dll">
+              <Actions />
+            </File>
+            <File FileName="SixLabors.Fonts.dll">
+              <Actions />
+            </File>
+            <File FileName="SixLabors.Fonts.xml">
+              <Actions />
+            </File>
+            <File FileName="System.Buffers.dll">
+              <Actions />
+            </File>
+            <File FileName="System.Buffers.xml">
+              <Actions />
+            </File>
+            <File FileName="System.Configuration.ConfigurationManager.dll">
+              <Actions />
+            </File>
+            <File FileName="System.Configuration.ConfigurationManager.xml">
+              <Actions />
+            </File>
+            <File FileName="System.Memory.dll">
+              <Actions />
+            </File>
+            <File FileName="System.Memory.xml">
+              <Actions />
+            </File>
+            <File FileName="System.Numerics.Vectors.dll">
+              <Actions />
+            </File>
+            <File FileName="System.Numerics.Vectors.xml">
+              <Actions />
+            </File>
+            <File FileName="System.Runtime.CompilerServices.Unsafe.dll">
+              <Actions />
+            </File>
+            <File FileName="System.Runtime.CompilerServices.Unsafe.xml">
+              <Actions />
+            </File>
+            <File FileName="System.Text.Encodings.Web.dll">
+              <Actions />
+            </File>
+            <File FileName="System.Text.Encodings.Web.xml">
+              <Actions />
+            </File>
+            <File FileName="System.Text.Json.dll">
+              <Actions />
+            </File>
+            <File FileName="System.Text.Json.xml">
+              <Actions />
+            </File>
+            <File FileName="System.Threading.Tasks.Extensions.dll">
+              <Actions />
+            </File>
+            <File FileName="System.Threading.Tasks.Extensions.xml">
+              <Actions />
+            </File>
+            <File FileName="System.ValueTuple.dll">
+              <Actions />
+            </File>
+            <File FileName="System.ValueTuple.xml">
+              <Actions />
+            </File>
+            <File FileName="System.Windows.Forms.dll">
+              <Actions />
+            </File>
+            <File FileName="System.Xml.dll">
+              <Actions />
+            </File>
+            <File FileName="System.Xml.Linq.dll">
+              <Actions />
+            </File>
+            <File FileName="WindowsBase.dll">
+              <Actions />
+            </File>
+            <File FileName="Forms\FormGrupoLote.b1f">
+              <Actions />
+            </File>
+            <File FileName="Forms\FormGrupoLote.b1f.cs">
+              <Actions />
+            </File>
+            <File FileName="Forms\FormResultadoProcessamento.b1f">
+              <Actions />
+            </File>
+            <File FileName="Forms\FormResultadoProcessamento.b1f.cs">
+              <Actions />
+            </File>
+            <File FileName="Forms\FormSelecionarGrupo.b1f">
+              <Actions />
+            </File>
+            <File FileName="Forms\FormSelecionarGrupo.b1f.cs">
+              <Actions />
+            </File>
+            <File FileName="Forms\FormVisualizacaoLinhas.b1f">
+              <Actions />
+            </File>
+            <File FileName="Forms\FormVisualizacaoLinhas.b1f.cs">
+              <Actions />
+            </File>
+            <File FileName="rpt\DLN-ENT.rpt">
+              <Actions />
+            </File>
+          </Files>
+        </Uninstallation>
+      </x64>
+    </Addon>
+  </Addons>
+  <XApps>
+    <XApp Name="" Path="" FileName="" />
+  </XApps>
+  <UDQs>
+    <UDQ udqname="">
+      <Hana FileName="" />
+    </UDQ>
+  </UDQs>
+</AddOnRegData>

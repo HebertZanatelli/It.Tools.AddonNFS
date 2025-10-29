@@ -34,8 +34,8 @@ namespace ItTech.Tool.AddonNFS.Services
             ReportDocument oRPT = new ReportDocument();
             string caminhoCompleto = "";
             string reportPath = "";
-            // *** CORREÇÃO: Declarar a variável ANTES do try ***
-            string nomeParametroDocEntry = "DocKey@"; // Nome padrão, confirme no seu .RPT
+            
+            string nomeParametroDocEntry = "DocKey@"; 
 
             // Log de início
             Debug.WriteLine($"[PdfGenerationService] Iniciando geração PDF para DocEntry: {docEntry}, Destino: {pastaDestino}, Arquivo: {nomeArquivo}");
@@ -83,7 +83,7 @@ namespace ItTech.Tool.AddonNFS.Services
 
                 // --- 3. Configurar Conexão com o Banco de Dados (Segura) ---
                 string crystalUser = ConfigurationManager.AppSettings["CrystalReportDbUser"];
-                string crystalPass = ConfigurationManager.AppSettings["CrystalReportDbPassword"]; // !! PROTEJA ESTA SENHA !!
+                string crystalPass = ConfigurationManager.AppSettings["CrystalReportDbPassword"]; 
 
                 if (string.IsNullOrEmpty(crystalUser) || string.IsNullOrEmpty(crystalPass))
                     return LogErrorAndReturn(docEntry, false, "Credenciais 'CrystalReportDbUser' ou 'CrystalReportDbPassword' não configuradas/vazias no App.config.");
@@ -120,7 +120,7 @@ namespace ItTech.Tool.AddonNFS.Services
             }
             catch (ParameterFieldCurrentValueException paramEx) // Exceção específica para parâmetro
             {
-                // *** CORREÇÃO: A variável agora está acessível aqui ***
+                
                 return LogErrorAndReturn(docEntry, false, $"Erro ao processar parâmetro '{nomeParametroDocEntry}' no Crystal. Verifique o tipo e valor esperado no relatório. Erro Crystal: {paramEx.Message}");
             }
             catch (Exception ex) // Captura geral
@@ -129,7 +129,7 @@ namespace ItTech.Tool.AddonNFS.Services
             }
             finally
             {
-                // --- 6. Liberar Recursos (MUITO IMPORTANTE) ---
+                
                 if (oRPT != null)
                 {
                     try { oRPT.Close(); } catch { }

@@ -73,10 +73,10 @@ namespace ItTech.Tool.AddonNFS.Services
                     string session = string.Empty;
                     string nomeBanco = string.Empty;
 
-                    // ✅ EXATAMENTE como no exemplo - SEM barra no final
+                    //  EXATAMENTE como no exemplo - SEM barra no final
                     string serviceLayerAddress = _baseUrl;
 
-                    // ✅ OBTER contexto do SAP B1 - MÉTODO QUE FUNCIONA
+                    //  OBTER contexto do SAP B1 - MÉTODO QUE FUNCIONA
                     string context = Application.SBO_Application.Company.GetServiceLayerConnectionContext(serviceLayerAddress);
 
                     if (string.IsNullOrEmpty(context))
@@ -84,10 +84,10 @@ namespace ItTech.Tool.AddonNFS.Services
                         throw new ServiceLayerConnectionException("Falha ao obter contexto do Service Layer. Verifique se está logado no SAP B1.");
                     }
 
-                    // ✅ URL como no exemplo
+                    //  URL como no exemplo
                     Uri UrlServiceLayer = new Uri(serviceLayerAddress + "/");
 
-                    // ✅ EXTRAIR sessão do contexto
+                    //  EXTRAIR sessão do contexto
                     string[] cookieItems = context.Split(';');
                     foreach (var cookieItem in cookieItems)
                     {
@@ -97,7 +97,7 @@ namespace ItTech.Tool.AddonNFS.Services
                             if (parts[0].Trim() == "B1SESSION")
                             {
                                 session = parts[1].Trim();
-                                break; // ✅ Só precisamos da sessão
+                                break; 
                             }
                         }
                     }
@@ -107,7 +107,7 @@ namespace ItTech.Tool.AddonNFS.Services
                         throw new ServiceLayerConnectionException("B1SESSION não encontrado no contexto");
                     }
 
-                    // ✅ CORRIGIDO: Database vem da APPLICATION (não do cookie!)
+                    
                     nomeBanco = Application.SBO_Application.Company.DatabaseName;
 
                     if (string.IsNullOrEmpty(nomeBanco))
@@ -115,10 +115,10 @@ namespace ItTech.Tool.AddonNFS.Services
                         throw new ServiceLayerConnectionException("Database não encontrado na Application");
                     }
 
-                    // ✅ CONFIGURAR cliente EXATAMENTE como no exemplo
+                    
                     SetClient(UrlServiceLayer, nomeBanco, session);
 
-                    // ✅ Marcar horário de expiração (15 minutos - mais conservador)
+                    
                     _sessionExpiry = DateTime.Now.AddMinutes(15);
 
                     System.Diagnostics.Debug.WriteLine($"[ServiceLayer] ✅ Sessão obtida com sucesso!");
@@ -134,7 +134,7 @@ namespace ItTech.Tool.AddonNFS.Services
         }
 
         /// <summary>
-        /// ✅ SetClient - IMPLEMENTAÇÃO CORRIGIDA com debug detalhado
+        ///  SetClient - IMPLEMENTAÇÃO  com debug detalhado
         /// </summary>
         private static void SetClient(Uri UrlServiceLayer, string database, string sessionId)
         {
@@ -356,18 +356,18 @@ namespace ItTech.Tool.AddonNFS.Services
         }
 
         /// <summary>
-        /// ✅ Verificar se precisa renovar sessão (mais conservador)
+        ///  Verificar se precisa renovar sessão (mais conservador)
         /// </summary>
         public static bool NeedsRenewal()
         {
-            // ✅ Renovar se a sessão expira em menos de 5 minutos OU já expirou
+            //  Renovar se a sessão expira em menos de 5 minutos OU já expirou
             return _sessionExpiry == DateTime.MinValue ||
                    DateTime.Now.AddMinutes(5) >= _sessionExpiry ||
                    string.IsNullOrEmpty(_currentSessionId);
         }
 
         /// <summary>
-        /// ✅ Renovar sessão se necessário (com debug)
+        ///  Renovar sessão se necessário (com debug)
         /// </summary>
         public void RenewIfNeeded()
         {
@@ -379,7 +379,7 @@ namespace ItTech.Tool.AddonNFS.Services
         }
 
         /// <summary>
-        /// ✅ Testar conectividade COM DEBUG DETALHADO
+        ///  Testar conectividade COM DEBUG DETALHADO
         /// </summary>
         public async Task<bool> TestConnectionAsync(CancellationToken cancellationToken = default)
         {
